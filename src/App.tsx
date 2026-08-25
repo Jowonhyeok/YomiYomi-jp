@@ -50,28 +50,10 @@ declare global {
 }
 
 // 비로그인 상태 및 초기 신규 사용자용 디폴트 덱 정의
-// src/App.tsx 상단 49번째 줄 근처
 const DEFAULT_DECK_DATA: Deck = {
   id: 'default',
-  name: 'Default Deck', // <--- 기존 'Default Deck (N5 基礎単語)'에서 깔끔하게 수정
-  cards: [
-    {
-      id: 'default-card-1',
-      word: '日本語',
-      reading: 'にほんご',
-      partOfSpeech: '명사',
-      meaning: '일본어',
-      jlpt: 'N5'
-    },
-    {
-      id: 'default-card-2',
-      word: '友達',
-      reading: 'ともだち',
-      partOfSpeech: '명사',
-      meaning: '친구',
-      jlpt: 'N5'
-    }
-  ],
+  name: 'Default Deck',
+  cards: [], // 카드를 완전히 비워서 빈 단어장으로 설정
   createdAt: new Date().toISOString()
 };
 
