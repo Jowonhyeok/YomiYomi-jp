@@ -5,7 +5,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED', message: 'POST 요청만 허용됩니다.' });
   }
 
-  // 1. Bearer Token 추출
+  // 1. Authorization 토큰 추출
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'UNAUTHORIZED', message: '로그인이 필요합니다.' });
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'INVALID_TOKEN', message: '인증 검증 실패: ' + err.message });
   }
 
-  // 3. Firestore REST API로 유저 데이터 및 사용량 조회
+  // 3. Firestore REST API로 사용자 정보 및 사용량 조회
   let userData = {};
   try {
     const userDocRes = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`);
@@ -70,14 +70,14 @@ export default async function handler(req, res) {
     const today = new Date().toISOString().split('T')[0];
     let dailyCount = userData.lastAnalyzeDate === today ? (userData.dailyAnalyzeCount || 0) : 0;
 
-    // 일일 사용량 제한 체크
+    // 일일 횟수 검증 (무료 3회, 프리미엄 300회)
     if (!isSubscribed && dailyCount >= 3) {
       return res.status(429).json({ error: 'DAILY_LIMIT_EXCEEDED', message: '오늘의 무료 분석 횟수(3회)를 모두 사용하셨습니다.' });
     } else if (isSubscribed && dailyCount >= 300) {
       return res.status(429).json({ error: 'FUP_LIMIT_EXCEEDED', message: '일일 최대 분석 제공량을 초과했습니다. 내일 다시 이용해 주세요.' });
     }
 
-    // 4. Gemini AI 분석 실행 (gemini-3.5-flash-lite 적용)
+    // 4. Gemini AI 실행 (gemini-3.5-flash-lite)
     const apiKey = process.env.GEMINI_API_KEY || '';
     if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
 
@@ -94,13 +94,14 @@ export default async function handler(req, res) {
     else if (targetLang === "ja") langGuide = "Japanese (日本語)";
 
     let promptText = 'You are a professional Japanese language tutor. Analyze the following Japanese input and respond strictly in valid JSON format.\n';
-    promptText += 'CRITICAL LANGUAGE REQUIREMENT: All "meaning" and "explanation" values inside the JSON MUST contain translations for the target language: "' + targetLang + '" (' + langGuide + '). Ensure "zh-CN" and "zh-TW" are both accurately populated with Simplified and Traditional Chinese respectively.\n\n';
+    promptText += 'CRITICAL LANGUAGE REQUIREMENT: All "meaning", "explanation", and "translatedText" values inside the JSON MUST contain translations for the target language: "' + targetLang + '" (' + langGuide + '). Ensure "zh-CN" and "zh-TW" are both accurately populated with Simplified and Traditional Chinese respectively.\n\n';
 
     if (text) promptText += '[Input Text]: "' + text + '"\n';
     if (imageBase64) promptText += '[Instruction]: Extract and analyze the Japanese text from the attached image.\n';
 
     promptText += '\n[Required JSON Schema Example]:\n{\n' +
       '  "isJapanese": true,\n' +
+      '  "translatedText": "Full sentence translation in target language",\n' +
       '  "rubySentences": ["<ruby>私<rt>わたし</rt></ruby>は<ruby>学生<rt>がくせい</rt></ruby>です。"],\n' +
       '  "kanjiList": [{"kanji": "私", "readings": "わたし", "meaning": {"ko": "나", "en": "I, me", "zh-CN": "我", "zh-TW": "我", "ja": "わたし"}}],\n' +
       '  "wordList": [{"word": "学生", "reading": "がくせい", "partOfSpeech": "명사", "meaning": {"ko": "학생", "en": "student", "zh-CN": "학생", "zh-TW": "學生", "ja": "がくせい"}, "jlpt": "N5"}],\n' +
@@ -117,21 +118,17 @@ export default async function handler(req, res) {
     let cleanedJsonText = rawText.split('```json').join('').split('```').join('').trim();
     const parsedData = JSON.parse(cleanedJsonText);
 
-    // 5. Firestore REST API로 사용량 업데이트
-    try {
-      await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fields: {
-            dailyAnalyzeCount: { integerValue: String(dailyCount + 1) },
-            lastAnalyzeDate: { stringValue: today }
-          }
-        })
-      });
-    } catch (updateErr) {
-      console.error('Firestore Update Error:', updateErr.message);
-    }
+    // 5. Firestore REST API 사용량 업데이트
+    await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          dailyAnalyzeCount: { integerValue: String(dailyCount + 1) },
+          lastAnalyzeDate: { stringValue: today }
+        }
+      })
+    });
 
     return res.status(200).json(parsedData);
 

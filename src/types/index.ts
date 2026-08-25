@@ -1,11 +1,9 @@
-//데이터 타입 및 인터페이스
-export type Lang = 'ko' | 'en' | 'zh-CN' | 'zh-TW' | 'ja';
-export type MultilingualText = string | Record<Lang, string>;
+export type Lang = 'en' | 'ko' | 'zh-CN' | 'zh-TW' | 'ja';
 
 export interface KanjiInfo {
   kanji: string;
   readings: string;
-  meaning: MultilingualText;
+  meaning: string;
 }
 
 export interface WordInfo {
@@ -13,26 +11,23 @@ export interface WordInfo {
   word: string;
   reading: string;
   partOfSpeech: string;
-  meaning: MultilingualText;
-  jlpt: string;
+  meaning: string;
+  jlpt?: string;
 }
 
 export interface GrammarInfo {
   grammar: string;
-  explanation: MultilingualText;
+  explanation: string;
 }
 
-export interface RubyToken {
-  text: string;
-  reading?: string;
-}
-
+// 💥 에러의 원인이었던 translatedText가 추가되었습니다!
 export interface AnalysisResult {
   isJapanese: boolean;
-  rubySentences: string[];
-  kanjiList: KanjiInfo[];
-  wordList: WordInfo[];
-  grammarList: GrammarInfo[];
+  translatedText?: string; 
+  rubySentences?: string[];
+  kanjiList?: KanjiInfo[];
+  wordList?: WordInfo[];
+  grammarList?: GrammarInfo[];
 }
 
 export interface Deck {
@@ -45,14 +40,15 @@ export interface Deck {
 export interface UserProfile {
   id: string;
   email: string;
-  name: string;
-  isSubscribed?: boolean;
+  name?: string;
+  isSubscribed: boolean;
   subscriptionPlan?: string;
   subscriptionEndDate?: string;
   cancelAtPeriodEnd?: boolean;
-  lastStudyDate?: string;
-  streakDays?: number;
-  lastAnalyzeDate?: string;
-  dailyAnalyzeCount?: number;
-  lang?: Lang;
+  lastPaymentId?: string;
+  lastPaymentDate?: string;
+  dailyAnalyzeCount: number;
+  lastAnalyzeDate: string;
+  lang: Lang;
+  decks?: Deck[];
 }

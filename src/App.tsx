@@ -49,11 +49,10 @@ declare global {
   }
 }
 
-// 비로그인 상태 및 초기 신규 사용자용 디폴트 덱 정의
 const DEFAULT_DECK_DATA: Deck = {
   id: 'default',
   name: 'Default Deck',
-  cards: [], // 카드를 완전히 비워서 빈 단어장으로 설정
+  cards: [], 
   createdAt: new Date().toISOString()
 };
 
@@ -79,6 +78,9 @@ export default function App() {
   const [isCoolingDown, setIsCoolingDown] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // 번역 표시 On/Off 상태 추가
+  const [showTranslation, setShowTranslation] = useState(true);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLeftSidebarOpenMobile, setIsLeftSidebarOpenMobile] = useState(false);
@@ -149,8 +151,36 @@ export default function App() {
 
   useEffect(() => {
     if (!auth || !auth.onAuthStateChanged) return;
+    
+    // 모바일 리다이렉트 결제 후 돌아왔을 때 처리 로직
+    const checkPendingMobilePayment = async (user: any) => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentId = urlParams.get('paymentId');
+      if (paymentId) {
+        const planName = sessionStorage.getItem('pendingPlanName') || 'Premium';
+        try {
+          const idToken = await user.getIdToken(true);
+          const verifyRes = await fetch('/api/payments/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+            body: JSON.stringify({ paymentId, planName, userId: user.uid })
+          });
+          const verifyData = await verifyRes.json();
+          if (verifyData.success) {
+            showAlert(`🎉 ${planName} 결제 및 승인이 완료되었습니다!`);
+            sessionStorage.removeItem('pendingPlanName');
+            window.history.replaceState({}, document.title, window.location.pathname); // URL 찌꺼기 제거
+          }
+        } catch (e) {
+          console.error("Mobile payment verification failed:", e);
+        }
+      }
+    };
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
+        checkPendingMobilePayment(user); // 결제 리다이렉트 체크
+
         if (!db || !db.app) {
           setCurrentUser({
             id: user.uid,
@@ -158,7 +188,8 @@ export default function App() {
             name: user.displayName || user.email?.split('@')[0] || 'User',
             isSubscribed: false,
             dailyAnalyzeCount: 0,
-            lastAnalyzeDate: new Date().toISOString().split('T')[0]
+            lastAnalyzeDate: new Date().toISOString().split('T')[0],
+            lang: lang 
           });
           return;
         }
@@ -219,7 +250,6 @@ export default function App() {
               dailyAnalyzeCount: 0,
               lang: 'en'
             };
-            {/* 신규 가입 사용자를 위한 디폴트 덱 지정 */}
             const initialDeck: Deck[] = [DEFAULT_DECK_DATA];
             setCurrentUser(newUser);
             setDoc(userDocRef, { ...newUser, decks: initialDeck });
@@ -235,7 +265,6 @@ export default function App() {
           if (saved) {
             setDecks(sanitizeDecks(JSON.parse(saved)));
           } else {
-            // 비로그인 상태일 때 디폴트 덱 지정
             setDecks([DEFAULT_DECK_DATA]);
           }
         } catch {
@@ -480,6 +509,9 @@ export default function App() {
         easyPayObj = { easyPayProvider: "ALIPAY" };
       }
 
+      // 모바일 환경을 대비해 세션 스토리지에 플랜명 임시저장
+      sessionStorage.setItem('pendingPlanName', planName);
+
       const paymentRequest: any = {
         storeId: PORTONE_STORE_ID,
         channelKey: channelKey,
@@ -488,6 +520,7 @@ export default function App() {
         totalAmount: totalAmount,
         currency: currency,
         payMethod: payMethod,
+        redirectUrl: window.location.origin, // ★ 모바일 결제 후 QR 방지 (본래 사이트로 복귀)
         customer: {
           fullName: currentUser.name || "User",
           email: currentUser.email || "user@example.com",
@@ -498,6 +531,8 @@ export default function App() {
 
       const response = await window.PortOne.requestPayment(paymentRequest);
 
+      // 모바일 환경일 경우 리다이렉트되어 아래 코드가 실행되지 않고 useEffect에서 처리됨
+      // 아래는 PC(팝업 결제) 환경일 경우 진행
       if (response && response.code != null) {
         showAlert(`Payment failed: ${response.message || 'Cancelled or failed authorization.'}`);
         return;
@@ -525,6 +560,13 @@ export default function App() {
         showAlert(`결제 검증 실패: ${verifyData.message || '검증에 실패했습니다.'}`);
         return;
       }
+
+      // 💥 즉각적인 프리미엄 상태 반영 💥
+      setCurrentUser((prev) => prev ? {
+        ...prev,
+        isSubscribed: true,
+        subscriptionPlan: planName
+      } : null);
 
       setIsPricingModalOpen(false);
       setSelectedPlanForPay(null);
@@ -957,16 +999,6 @@ export default function App() {
     }, 1200);
   };
 
-  const cycleReadingMode = () => {
-    if (readingDisplayMode === 'furigana') {
-      setReadingDisplayMode('yomigana');
-    } else if (readingDisplayMode === 'yomigana') {
-      setReadingDisplayMode('off');
-    } else {
-      setReadingDisplayMode('furigana');
-    }
-  };
-
   const currentActiveDeck = decks.find(d => String(d.id) === String(selectedDeckId)) || decks[0] || DEFAULT_DECK_DATA;
 
   const filteredCards = (currentActiveDeck.cards || []).filter(c => 
@@ -977,9 +1009,12 @@ export default function App() {
 
   const todayStr = new Date().toISOString().split('T')[0];
   const isTodayAnalyze = currentUser?.lastAnalyzeDate === todayStr;
-  const remainingFreeCount = currentUser?.isSubscribed 
-    ? '∞' 
-    : Math.max(0, 3 - (isTodayAnalyze ? (currentUser?.dailyAnalyzeCount || 0) : 0));
+  
+  // 💥 잔여 횟수 계산 오류 픽스 (프리미엄 300 / 무료 3) 💥
+  const isPremiumUser = currentUser?.isSubscribed || false;
+  const limitCount = isPremiumUser ? 300 : 3;
+  const currentUsage = isTodayAnalyze ? (currentUser?.dailyAnalyzeCount || 0) : 0;
+  const remainingCount = Math.max(0, limitCount - currentUsage);
 
   const daysLeft = calculateDaysLeft(currentUser?.subscriptionEndDate);
 
@@ -1191,11 +1226,17 @@ export default function App() {
                     </span>
                     
                     <div className="flex items-center space-x-2">
-                      {!currentUser?.isSubscribed && (
+                      {/* 프리미엄 유저와 무료 유저의 남은 횟수 라벨 처리 픽스 */}
+                      {!isPremiumUser ? (
                         <span className="text-[11px] px-2 py-0.5 rounded-full font-bold border bg-sky-50 text-sky-700 border-sky-200">
-                          {t('dailyLimitBadge')}{remainingFreeCount}{t('unitTimes')}
+                          {lang === 'ko' ? `무료 분석 ${remainingCount}/3회` : `Free: ${remainingCount}/3`}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full font-bold border bg-amber-50 text-amber-700 border-amber-200">
+                          {lang === 'ko' ? `프리미엄 분석 ${remainingCount}/300회` : `Premium: ${remainingCount}/300`}
                         </span>
                       )}
+                      
                       <span className={`text-[11px] font-semibold ${inputText.length >= MAX_TEXT_LENGTH ? 'text-rose-600 font-bold' : 'text-slate-400'}`}>
                         {inputText.length.toLocaleString()} / {MAX_TEXT_LENGTH.toLocaleString()}{t('charCount')}
                       </span>
@@ -1334,18 +1375,27 @@ export default function App() {
                             </button>
                           </div>
 
+                          {/* 💥 요미가나 통일 & 번역 토글 추가 영역 💥 */}
                           <div className="flex items-center space-x-1 border-l border-slate-200 pl-1.5">
                             <button
-                              onClick={cycleReadingMode}
+                              onClick={() => setReadingDisplayMode(readingDisplayMode === 'off' ? 'furigana' : 'off')}
                               className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold transition shadow-2xs cursor-pointer ${
-                                readingDisplayMode === 'off' 
+                                readingDisplayMode !== 'off'
                                   ? 'bg-rose-600 text-white hover:bg-rose-700' 
-                                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                  : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
                               }`}
                             >
-                              {readingDisplayMode === 'furigana' && t('modeFurigana')}
-                              {readingDisplayMode === 'yomigana' && t('modeYomigana')}
-                              {readingDisplayMode === 'off' && t('modeOff')}
+                              요미가나 {readingDisplayMode !== 'off' ? 'On' : 'Off'}
+                            </button>
+                            <button
+                              onClick={() => setShowTranslation(!showTranslation)}
+                              className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold transition shadow-2xs cursor-pointer ${
+                                showTranslation
+                                  ? 'bg-sky-600 text-white hover:bg-sky-700' 
+                                  : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                              }`}
+                            >
+                              번역 {showTranslation ? 'On' : 'Off'}
                             </button>
                           </div>
                         </div>
@@ -1370,19 +1420,12 @@ export default function App() {
                                     return <span key={tIdx}>{token.text}</span>;
                                   }
 
-                                  if (readingDisplayMode === 'furigana') {
+                                  if (readingDisplayMode === 'furigana' || readingDisplayMode === 'yomigana') {
                                     return (
                                       <ruby key={tIdx} className="inline-ruby mx-[1px]">
                                         {token.text}
                                         <rt className="text-rose-600 font-bold text-[0.65em]">{token.reading}</rt>
                                       </ruby>
-                                    );
-                                  } else if (readingDisplayMode === 'yomigana') {
-                                    return (
-                                      <span key={tIdx} className="inline">
-                                        <span>{token.text}</span>
-                                        <span className="text-[0.75em] font-semibold text-amber-700 mx-[1px]">[{token.reading}]</span>
-                                      </span>
                                     );
                                   } else {
                                     return <span key={tIdx}>{token.text}</span>;
@@ -1393,6 +1436,13 @@ export default function App() {
                           })
                         ) : (
                           <p className="text-slate-400 text-xs">No analyzed sentences found.</p>
+                        )}
+                        
+                        {/* 💥 문장 번역 표시 영역 💥 */}
+                        {showTranslation && analysisResult.translatedText && (
+                          <div className="mt-4 pt-3 border-t border-amber-200/50 text-sm font-bold text-slate-700">
+                            {analysisResult.translatedText}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1899,7 +1949,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* PG 심사 필수 사업자 정보 및 법적 약관 푸터 (다국어 자동 연동) */}
       <footer className="w-full py-6 flex flex-col items-center justify-center border-t border-slate-200 bg-white mt-12 space-y-2 px-4 text-center">
         <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs font-bold text-slate-600">
           <button onClick={() => openLegalDoc('terms')} className="hover:text-rose-600 hover:underline cursor-pointer">

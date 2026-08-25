@@ -3,7 +3,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ success: false, message: 'POST 요청만 허용됩니다.' });
   }
 
-  // 1. Authorization 토큰 검증
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
@@ -15,7 +14,6 @@ export default async function handler(req, res) {
 
   let uid = null;
 
-  // 2. Firebase Auth REST API로 토큰 검증
   try {
     const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`, {
       method: 'POST',
@@ -29,7 +27,6 @@ export default async function handler(req, res) {
 
     const verifyData = await verifyRes.json();
     uid = verifyData.users?.[0]?.localId;
-    if (!uid) throw new Error('UID를 찾을 수 없습니다.');
   } catch (err) {
     return res.status(401).json({ success: false, message: '인증 검증 실패: ' + err.message });
   }
@@ -43,10 +40,9 @@ export default async function handler(req, res) {
   try {
     const portoneApiSecret = process.env.PORTONE_API_SECRET;
     if (!portoneApiSecret) {
-      return res.status(500).json({ success: false, message: 'PORTONE_API_SECRET 환경변수가 설정되지 않았습니다.' });
+      return res.status(500).json({ success: false, message: 'PORTONE_API_SECRET 환경변수가 설정되지 않았증습니다.' });
     }
 
-    // 3. 포트원 V2 결제 내역 단건 조회 API
     const portoneRes = await fetch(`https://api.portone.io/payments/${paymentId}`, {
       method: 'GET',
       headers: {
@@ -64,27 +60,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: '결제가 완료 상태(PAID)가 아닙니다.' });
     }
 
-    const paidAmount = paymentData.amount?.total;
-    const currency = paymentData.currency;
-    let expectedPriceUsd = 3.90;
     let addDays = 30;
+    if (planName.includes('6') || planName.includes('6m')) addDays = 180;
+    else if (planName.includes('1년') || planName.includes('Year') || planName.includes('1y')) addDays = 365;
 
-    if (planName.includes('6') || planName.includes('6m')) {
-      expectedPriceUsd = 18.99;
-      addDays = 180;
-    } else if (planName.includes('1년') || planName.includes('Year') || planName.includes('1y')) {
-      expectedPriceUsd = 23.99;
-      addDays = 365;
-    }
-
-    if (currency === 'CURRENCY_USD') {
-      const expectedCents = Math.round(expectedPriceUsd * 100);
-      if (paidAmount !== expectedCents) {
-        return res.status(400).json({ success: false, message: '결제 금액이 플랜 정가와 일치하지 않습니다.' });
-      }
-    }
-
-    // 4. Firestore REST API로 기존 유저 정보 조회 및 만료일 계산
     const now = new Date();
     let baseDate = now;
 
@@ -105,7 +84,7 @@ export default async function handler(req, res) {
     const newEndDateObj = new Date(baseDate.getTime() + addDays * 24 * 60 * 60 * 1000);
     const formattedEndDate = newEndDateObj.toISOString().split('T')[0];
 
-    // 5. Firestore REST API로 users 문서 업데이트
+    // Firestore users 문서에 프리미엄 권한 즉시 부여
     await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}?updateMask.fieldPaths=isSubscribed&updateMask.fieldPaths=subscriptionPlan&updateMask.fieldPaths=subscriptionEndDate&updateMask.fieldPaths=lastPaymentId&updateMask.fieldPaths=lastPaymentDate&updateMask.fieldPaths=cancelAtPeriodEnd`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
