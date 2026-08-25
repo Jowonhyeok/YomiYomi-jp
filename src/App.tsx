@@ -511,7 +511,7 @@ export default function App() {
     });
   };
 
-  // 💥 결제 수단별 파라미터 분기 및 products 구조 정제 💥
+  // 💥 포트원 V2 / Eximbay 직접 우회 주입 (bypass) 적용 💥
   const handlePortOnePayment = async (planName: string, priceAmount: number, channelKey: string, providerType: 'eximbay_card' | 'eximbay_alipay' | 'kakaopay') => {
     if (!agreePayPolicy) {
       showAlert(lang === 'ko' ? "결제 및 정기 자동 결제 약관에 동의해 주세요." : "Please agree to the payment policy terms.");
@@ -531,7 +531,6 @@ export default function App() {
 
     try {
       const paymentId = `pay-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      const usdCents = Math.round(priceAmount * 100);
       
       const paymentRequest: any = {
         storeId: PORTONE_STORE_ID,
@@ -549,29 +548,46 @@ export default function App() {
         paymentRequest.currency = "CURRENCY_KRW";
         paymentRequest.totalAmount = await convertUsdToKrw(priceAmount);
         paymentRequest.payMethod = "EASY_PAY";
-      } else if (providerType === 'eximbay_card') {
+      } else {
+        const usdCents = Math.round(priceAmount * 100);
         paymentRequest.currency = "CURRENCY_USD";
         paymentRequest.totalAmount = usdCents;
-        paymentRequest.payMethod = "CARD";
+
+        if (providerType === 'eximbay_card') {
+          paymentRequest.payMethod = "CARD";
+        } else if (providerType === 'eximbay_alipay') {
+          paymentRequest.payMethod = "EASY_PAY";
+          paymentRequest.easyPay = { easyPayProvider: "ALIPAY" };
+        }
+
+        // 포트원 표준 products 지원
         paymentRequest.products = [
           {
+            id: `plan-${planName.replace(/\s+/g, '-').toLowerCase()}`,
             name: `YomiYomi ${planName} Premium`,
             amount: usdCents,
             quantity: 1,
           }
         ];
-      } else if (providerType === 'eximbay_alipay') {
-        paymentRequest.currency = "CURRENCY_USD";
-        paymentRequest.totalAmount = usdCents;
-        paymentRequest.payMethod = "EASY_PAY";
-        paymentRequest.easyPay = { easyPayProvider: "ALIPAY" };
-        paymentRequest.products = [
+
+        // 🔥 X055 방지: Eximbay 전용 우회(Bypass) 파라미터 강제 삽입 🔥
+        const bypassProduct = [
           {
             name: `YomiYomi ${planName} Premium`,
-            amount: usdCents,
-            quantity: 1,
+            quantity: "1",
+            unitPrice: String(usdCents), // Eximbay는 단가를 선호
+            link: window.location.origin
           }
         ];
+
+        paymentRequest.bypass = {
+          eximbay_v2: {
+            product: bypassProduct
+          },
+          eximbay: {
+            product: bypassProduct
+          }
+        };
       }
 
       sessionStorage.setItem('pendingPlanName', planName);
