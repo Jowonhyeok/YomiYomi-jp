@@ -1226,14 +1226,9 @@ export default function App() {
                     </span>
                     
                     <div className="flex items-center space-x-2">
-                      {/* 프리미엄 유저와 무료 유저의 남은 횟수 라벨 처리 픽스 */}
-                      {!isPremiumUser ? (
+                      {!isPremiumUser && (
                         <span className="text-[11px] px-2 py-0.5 rounded-full font-bold border bg-sky-50 text-sky-700 border-sky-200">
                           {lang === 'ko' ? `무료 분석 ${remainingCount}/3회` : `Free: ${remainingCount}/3`}
-                        </span>
-                      ) : (
-                        <span className="text-[11px] px-2 py-0.5 rounded-full font-bold border bg-amber-50 text-amber-700 border-amber-200">
-                          {lang === 'ko' ? `프리미엄 분석 ${remainingCount}/300회` : `Premium: ${remainingCount}/300`}
                         </span>
                       )}
                       

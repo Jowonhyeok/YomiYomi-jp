@@ -94,14 +94,18 @@ export default async function handler(req, res) {
     else if (targetLang === "ja") langGuide = "Japanese (日本語)";
 
     let promptText = 'You are a professional Japanese language tutor. Analyze the following Japanese input and respond strictly in valid JSON format.\n';
-    promptText += 'CRITICAL LANGUAGE REQUIREMENT: All "meaning", "explanation", and "translatedText" values inside the JSON MUST contain translations for the target language: "' + targetLang + '" (' + langGuide + '). Ensure "zh-CN" and "zh-TW" are both accurately populated with Simplified and Traditional Chinese respectively.\n\n';
+    
+    // 💥 수정된 부분: 번역 데이터가 오브젝트가 아닌 단일 텍스트(String)로 나오도록 프롬프트 강화
+    promptText += 'CRITICAL INSTRUCTIONS:\n';
+    promptText += '1. "translatedText" MUST be a SINGLE plain string containing the full natural translation of the entire input text in the target language: "' + targetLang + '" (' + langGuide + '). Do NOT make it an object.\n';
+    promptText += '2. For "meaning" and "explanation" fields inside lists, provide translations as a multi-language object. Ensure "zh-CN" and "zh-TW" are both accurately populated.\n\n';
 
     if (text) promptText += '[Input Text]: "' + text + '"\n';
     if (imageBase64) promptText += '[Instruction]: Extract and analyze the Japanese text from the attached image.\n';
 
     promptText += '\n[Required JSON Schema Example]:\n{\n' +
       '  "isJapanese": true,\n' +
-      '  "translatedText": "Full sentence translation in target language",\n' +
+      '  "translatedText": "This is a student. (Write ONLY in the requested target language as a direct string)",\n' +
       '  "rubySentences": ["<ruby>私<rt>わたし</rt></ruby>は<ruby>学生<rt>がくせい</rt></ruby>です。"],\n' +
       '  "kanjiList": [{"kanji": "私", "readings": "わたし", "meaning": {"ko": "나", "en": "I, me", "zh-CN": "我", "zh-TW": "我", "ja": "わたし"}}],\n' +
       '  "wordList": [{"word": "学生", "reading": "がくせい", "partOfSpeech": "명사", "meaning": {"ko": "학생", "en": "student", "zh-CN": "학생", "zh-TW": "學生", "ja": "がくせい"}, "jlpt": "N5"}],\n' +
