@@ -1,4 +1,57 @@
 import admin from 'firebase-admin';
+import path from 'path';
+import fs from 'fs';
+
+// Firebase Admin 초기화
+if (!admin.apps.length) {
+  let certConfig = null;
+
+  // 1순위: api/ 폴더 또는 프로젝트 내 serviceAccountKey.json 파일이 존재하는지 확인
+  const possiblePaths = [
+    path.join(process.cwd(), 'api', 'serviceAccountKey.json'),
+    path.join(process.cwd(), 'serviceAccountKey.json'),
+    path.join(process.cwd(), 'src', 'serviceAccountKey.json')
+  ];
+
+  for (const filePath of possiblePaths) {
+    if (fs.existsSync(filePath)) {
+      try {
+        certConfig = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        break;
+      } catch (e) {
+        console.error('Failed to read local serviceAccountKey.json:', e);
+      }
+    }
+  }
+
+  // 2순위: 로컬 파일이 없으면 Vercel에 설정된 FIREBASE_SERVICE_ACCOUNT 환경 변수 사용
+  if (!certConfig && process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      certConfig = typeof process.env.FIREBASE_SERVICE_ACCOUNT === 'string'
+        ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+        : process.env.FIREBASE_SERVICE_ACCOUNT;
+    } catch (e) {
+      console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT env:', e);
+    }
+  }
+
+  // 3순위: 개별 환경 변수가 있을 때
+  if (!certConfig && process.env.FIREBASE_PROJECT_ID) {
+    certConfig = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    };
+  }
+
+  if (!certConfig) {
+    throw new Error('Firebase Admin 인증 설정을 찾을 수 없습니다. (json 파일 또는 환경 변수 확인 필요)');
+  }
+
+  admin.initializeApp({
+    credential: admin.credential.cert(certConfig),
+  });
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,28 +59,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Firebase Admin 초기화 예외 처리
-    if (!admin.apps.length) {
-      const privateKey = process.env.FIREBASE_PRIVATE_KEY 
-        ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') 
-        : undefined;
-
-      if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
-        return res.status(500).json({ 
-          success: false, 
-          message: 'Server Error: Firebase 환경 변수(FIREBASE_PROJECT_ID 등)가 Vercel에 설정되지 않았습니다.' 
-        });
-      }
-
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: privateKey,
-        }),
-      });
-    }
-
     const authHeader = req.headers.authorization || '';
     const token = authHeader.split('Bearer ')[1];
     
@@ -35,7 +66,6 @@ export default async function handler(req, res) {
       return res.status(401).json({ success: false, message: 'Unauthorized: No token provided' });
     }
 
-    // 2. 토큰 검증
     const decodedToken = await admin.auth().verifyIdToken(token);
     const uid = decodedToken.uid;
 
@@ -49,7 +79,7 @@ export default async function handler(req, res) {
 
     const userData = userSnap.data();
 
-    // 3. 사용 기록 및 시각 비교
+    // 결제 시간과 사용 시간 비교
     const lastPaymentAt = userData.lastPaymentAt || 0;
     const lastUsedAt = userData.lastUsedAt || 0;
 
@@ -64,7 +94,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 4. 환불 승인 시 DB 롤백
+    // 환불 승인 시 DB 롤백
     await userRef.update({
       isSubscribed: false,
       subscriptionPlan: 'Free',
@@ -76,7 +106,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Refund API Error:', error);
-    // 500 에러 발생 시 세부 원인을 메시지로 리턴
     return res.status(500).json({ 
       success: false, 
       message: `Backend Error: ${error.message || JSON.stringify(error)}` 
