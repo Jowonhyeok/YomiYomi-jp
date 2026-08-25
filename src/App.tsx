@@ -11,8 +11,6 @@ import {
   deleteUser
 } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
-// @ts-ignore
-import AnkiExport from 'anki-apkg-export/dist/index.js';
 import { auth, googleProvider, db } from './firebase';
 
 import type { Lang, KanjiInfo, WordInfo, GrammarInfo, AnalysisResult, Deck, UserProfile } from './types';
@@ -81,7 +79,6 @@ export default function App() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // 번역 표시 On/Off 상태 추가
   const [showTranslation, setShowTranslation] = useState(true);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -154,7 +151,6 @@ export default function App() {
   useEffect(() => {
     if (!auth || !auth.onAuthStateChanged) return;
     
-    // 모바일 리다이렉트 결제 후 돌아왔을 때 처리 로직
     const checkPendingMobilePayment = async (user: any) => {
       const urlParams = new URLSearchParams(window.location.search);
       const paymentId = urlParams.get('paymentId');
@@ -168,13 +164,13 @@ export default function App() {
             body: JSON.stringify({ paymentId, planName, userId: user.uid })
           });
           
-          if (!verifyRes.ok) return; // 방어 코드
+          if (!verifyRes.ok) return;
 
           const verifyData = await verifyRes.json();
           if (verifyData.success) {
             showAlert(`🎉 ${planName} 결제 및 승인이 완료되었습니다!`);
             sessionStorage.removeItem('pendingPlanName');
-            window.history.replaceState({}, document.title, window.location.pathname); // URL 찌꺼기 제거
+            window.history.replaceState({}, document.title, window.location.pathname);
           }
         } catch (e) {
           console.error("Mobile payment verification failed:", e);
@@ -184,7 +180,7 @@ export default function App() {
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
-        checkPendingMobilePayment(user); // 결제 리다이렉트 체크
+        checkPendingMobilePayment(user);
 
         if (!db || !db.app) {
           setCurrentUser({
@@ -392,7 +388,6 @@ export default function App() {
     }
   };
 
-  // ★ 에러 처리 보강된 환불 로직 ★
   const handleCancelSubscription = () => {
     const confirmMsg = lang === 'ko' 
       ? "구독 해지 및 환불을 신청하시겠습니까?" 
@@ -410,7 +405,6 @@ export default function App() {
           }
         });
 
-        // Vercel 404 등 비정상 응답 시 에러 처리
         if (!res.ok) {
           throw new Error(`API 통신 에러 (${res.status}): 환불 처리 서버를 찾을 수 없습니다. 관리자에게 문의해주세요.`);
         }
@@ -436,7 +430,6 @@ export default function App() {
 
         setIsSettingsModalOpen(false);
       } catch (err: any) {
-        // 하얀 화면 방지를 위해 예외를 팝업으로 표시
         showAlert('환불 처리 중 문제가 발생했습니다: ' + err.message);
       }
     });
@@ -521,7 +514,6 @@ export default function App() {
         easyPayObj = { easyPayProvider: "ALIPAY" };
       }
 
-      // 모바일 환경을 대비해 세션 스토리지에 플랜명 임시저장
       sessionStorage.setItem('pendingPlanName', planName);
 
       const paymentRequest: any = {
@@ -532,7 +524,7 @@ export default function App() {
         totalAmount: totalAmount,
         currency: currency,
         payMethod: payMethod,
-        redirectUrl: window.location.origin, // ★ 모바일 결제 후 QR 방지 (본래 사이트로 복귀)
+        redirectUrl: window.location.origin, 
         customer: {
           fullName: currentUser.name || "User",
           email: currentUser.email || "user@example.com",
@@ -543,8 +535,6 @@ export default function App() {
 
       const response = await window.PortOne.requestPayment(paymentRequest);
 
-      // 모바일 환경일 경우 리다이렉트되어 아래 코드가 실행되지 않고 useEffect에서 처리됨
-      // 아래는 PC(팝업 결제) 환경일 경우 진행
       if (response && response.code != null) {
         showAlert(`Payment failed: ${response.message || 'Cancelled or failed authorization.'}`);
         return;
@@ -577,7 +567,6 @@ export default function App() {
         return;
       }
 
-      // 💥 즉각적인 프리미엄 상태 반영 💥
       setCurrentUser((prev) => prev ? {
         ...prev,
         isSubscribed: true,
@@ -852,45 +841,31 @@ export default function App() {
     setDeleteModalState({ isOpen: false, deckId: '', deckName: '', inputName: '' });
   };
 
-  const handleExportAnki = async () => {
+  // ★ 충돌 없는 완벽한 순수 txt 기반의 Anki 내보내기 로직 ★
+  const handleExportAnki = () => {
     const currentDeck = decks.find(d => String(d.id) === String(selectedDeckId));
     if (!currentDeck || !currentDeck.cards || currentDeck.cards.length === 0) {
       showAlert(t('noSavedWords'));
       return;
     }
 
-    try {
-      // 1. Anki 덱 생성
-      const apkg = new AnkiExport(currentDeck.name);
+    let ankiContent = '#separator:tab\n#html:true\n#tags:YomiYomi Anki\n';
+    currentDeck.cards.forEach(c => {
+      const front = `${c.word} <br><small style="color:#e11d48;">[${c.reading}]</small>`;
+      const posText = getLocalizedPOS(c.partOfSpeech, lang);
+      const meaningText = getLocalizedText(c.meaning, lang);
+      const back = `${meaningText} <br><small style="color:#64748b;">(${posText} ${c.jlpt ? '• ' + c.jlpt : ''})</small>`;
+      ankiContent += `${front}\t${back}\n`;
+    });
 
-      // 2. 단어 카드를 Anki 덱에 추가
-      currentDeck.cards.forEach(c => {
-        const posText = getLocalizedPOS(c.partOfSpeech, lang);
-        const meaningText = getLocalizedText(c.meaning, lang);
-
-        const front = `${c.word} <br><small style="color:#e11d48;">[${c.reading}]</small>`;
-        const back = `${meaningText} <br><small style="color:#64748b;">(${posText} ${c.jlpt ? '• ' + c.jlpt : ''})</small>`;
-
-        apkg.addCard(front, back);
-      });
-
-      // 3. .apkg 압축 바이너리 데이터 생성
-      const zipZip = await apkg.save();
-
-      // 4. .apkg 확장자로 파일 다운로드 실행
-      const blob = new Blob([zipZip], { type: 'application/apkg' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${currentDeck.name}_Anki_Deck.apkg`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (err: any) {
-      console.error("Anki Export Error:", err);
-      showAlert("Failed to export Anki deck: " + (err.message || err));
-    }
+    const blob = new Blob([ankiContent], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${currentDeck.name}_Anki.txt`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handlePrintTestSheet = () => {
@@ -1041,7 +1016,6 @@ export default function App() {
   const todayStr = new Date().toISOString().split('T')[0];
   const isTodayAnalyze = currentUser?.lastAnalyzeDate === todayStr;
   
-  // 💥 잔여 횟수 계산 오류 픽스 (프리미엄 300 / 무료 3) 💥
   const isPremiumUser = currentUser?.isSubscribed || false;
   const limitCount = isPremiumUser ? 300 : 3;
   const currentUsage = isTodayAnalyze ? (currentUser?.dailyAnalyzeCount || 0) : 0;
@@ -1401,7 +1375,6 @@ export default function App() {
                             </button>
                           </div>
 
-                          {/* 💥 요미가나 통일 & 번역 토글 추가 영역 💥 */}
                           <div className="flex items-center space-x-1 border-l border-slate-200 pl-1.5">
                             <button
                               onClick={() => setReadingDisplayMode(readingDisplayMode === 'off' ? 'furigana' : 'off')}
@@ -1464,7 +1437,6 @@ export default function App() {
                           <p className="text-slate-400 text-xs">No analyzed sentences found.</p>
                         )}
                         
-                        {/* 💥 문장 번역 표시 영역 💥 */}
                         {showTranslation && analysisResult.translatedText && (
                           <div className="mt-4 pt-3 border-t border-amber-200/50 text-sm font-bold text-slate-700">
                             {analysisResult.translatedText}
