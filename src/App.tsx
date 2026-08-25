@@ -11,6 +11,8 @@ import {
   deleteUser
 } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
+// @ts-ignore
+import AnkiExport from 'anki-apkg-export/dist/index.js';
 import { auth, googleProvider, db } from './firebase';
 
 import type { Lang, KanjiInfo, WordInfo, GrammarInfo, AnalysisResult, Deck, UserProfile } from './types';
@@ -165,6 +167,9 @@ export default function App() {
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
             body: JSON.stringify({ paymentId, planName, userId: user.uid })
           });
+          
+          if (!verifyRes.ok) return; // 방어 코드
+
           const verifyData = await verifyRes.json();
           if (verifyData.success) {
             showAlert(`🎉 ${planName} 결제 및 승인이 완료되었습니다!`);
@@ -387,6 +392,7 @@ export default function App() {
     }
   };
 
+  // ★ 에러 처리 보강된 환불 로직 ★
   const handleCancelSubscription = () => {
     const confirmMsg = lang === 'ko' 
       ? "구독 해지 및 환불을 신청하시겠습니까?" 
@@ -403,6 +409,11 @@ export default function App() {
             'Authorization': `Bearer ${idToken}`
           }
         });
+
+        // Vercel 404 등 비정상 응답 시 에러 처리
+        if (!res.ok) {
+          throw new Error(`API 통신 에러 (${res.status}): 환불 처리 서버를 찾을 수 없습니다. 관리자에게 문의해주세요.`);
+        }
 
         const data = await res.json();
 
@@ -425,7 +436,8 @@ export default function App() {
 
         setIsSettingsModalOpen(false);
       } catch (err: any) {
-        showAlert('An error occurred: ' + err.message);
+        // 하얀 화면 방지를 위해 예외를 팝업으로 표시
+        showAlert('환불 처리 중 문제가 발생했습니다: ' + err.message);
       }
     });
   };
@@ -553,10 +565,14 @@ export default function App() {
           userId: currentUser.id
         })
       });
+      
+      if (!verifyRes.ok) {
+        throw new Error(`API 검증 서버 연동 에러 (${verifyRes.status})`);
+      }
 
       const verifyData = await verifyRes.json();
 
-      if (!verifyRes.ok || !verifyData.success) {
+      if (!verifyData.success) {
         showAlert(`결제 검증 실패: ${verifyData.message || '검증에 실패했습니다.'}`);
         return;
       }
@@ -836,31 +852,45 @@ export default function App() {
     setDeleteModalState({ isOpen: false, deckId: '', deckName: '', inputName: '' });
   };
 
-  // ★ 충돌 없는 순수 txt 내보내기 롤백 ★
-  const handleExportAnki = () => {
+  const handleExportAnki = async () => {
     const currentDeck = decks.find(d => String(d.id) === String(selectedDeckId));
     if (!currentDeck || !currentDeck.cards || currentDeck.cards.length === 0) {
       showAlert(t('noSavedWords'));
       return;
     }
 
-    let ankiContent = '#separator:tab\n#html:true\n#tags:YomiYomi Anki\n';
-    currentDeck.cards.forEach(c => {
-      const front = `${c.word} <br><small style="color:#e11d48;">[${c.reading}]</small>`;
-      const posText = getLocalizedPOS(c.partOfSpeech, lang);
-      const meaningText = getLocalizedText(c.meaning, lang);
-      const back = `${meaningText} <br><small style="color:#64748b;">(${posText} ${c.jlpt ? '• ' + c.jlpt : ''})</small>`;
-      ankiContent += `${front}\t${back}\n`;
-    });
+    try {
+      // 1. Anki 덱 생성
+      const apkg = new AnkiExport(currentDeck.name);
 
-    const blob = new Blob([ankiContent], { type: 'text/plain;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${currentDeck.name}_Anki.txt`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // 2. 단어 카드를 Anki 덱에 추가
+      currentDeck.cards.forEach(c => {
+        const posText = getLocalizedPOS(c.partOfSpeech, lang);
+        const meaningText = getLocalizedText(c.meaning, lang);
+
+        const front = `${c.word} <br><small style="color:#e11d48;">[${c.reading}]</small>`;
+        const back = `${meaningText} <br><small style="color:#64748b;">(${posText} ${c.jlpt ? '• ' + c.jlpt : ''})</small>`;
+
+        apkg.addCard(front, back);
+      });
+
+      // 3. .apkg 압축 바이너리 데이터 생성
+      const zipZip = await apkg.save();
+
+      // 4. .apkg 확장자로 파일 다운로드 실행
+      const blob = new Blob([zipZip], { type: 'application/apkg' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${currentDeck.name}_Anki_Deck.apkg`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error("Anki Export Error:", err);
+      showAlert("Failed to export Anki deck: " + (err.message || err));
+    }
   };
 
   const handlePrintTestSheet = () => {
