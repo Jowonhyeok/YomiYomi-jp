@@ -376,11 +376,19 @@ export default function App() {
     }
   };
 
+  // 💥 절대 뻗지 않는 안전한 로그아웃 💥
   const handleLogout = () => {
     showConfirm(t('logoutConfirm'), async () => {
-      await signOut(auth);
-      setDecks([DEFAULT_DECK_DATA]);
-      setLang('en');
+      try {
+        await signOut(auth);
+      } catch (e) {
+        console.error("SignOut error:", e);
+      } finally {
+        setCurrentUser(null);
+        setDecks([DEFAULT_DECK_DATA]);
+        setLang('en');
+        setIsSettingsModalOpen(false);
+      }
     });
   };
 
@@ -467,24 +475,29 @@ export default function App() {
     }
   };
 
-  // 💥 회원 탈퇴 로직 보강 (Auth 계정 삭제 선작업 및 예외 처리) 💥
+  // 💥 세션 만료 및 권한 오류 방어형 탈퇴 처리 💥
   const handleDeleteAccount = () => {
     showConfirm(t('deleteAccountConfirm'), async () => {
       if (!currentUser || !auth.currentUser) return;
+      
+      const userUid = currentUser.id;
+      const firebaseUser = auth.currentUser;
+
       try {
-        const userUid = currentUser.id;
-        const firebaseUser = auth.currentUser;
-
-        // 1. Firebase Auth 계정 삭제 먼저 시도
-        await deleteUser(firebaseUser);
-
-        // 2. Auth 삭제 성공 시 Firestore DB 문서 삭제
+        // 1. Firestore DB 데이터 먼저 지우기 시도 (오류 무시 처리)
         if (db && db.app) {
-          const userDocRef = doc(db, 'users', userUid);
-          await deleteDoc(userDocRef);
+          try {
+            const userDocRef = doc(db, 'users', userUid);
+            await deleteDoc(userDocRef);
+          } catch (dbErr) {
+            console.warn("Firestore delete non-critical error:", dbErr);
+          }
         }
 
-        // 3. 앱 상태 초기화
+        // 2. Firebase Auth 계정 삭제
+        await deleteUser(firebaseUser);
+
+        // 3. 정상 탈퇴 성공
         setCurrentUser(null);
         setIsSettingsModalOpen(false);
         setDecks([DEFAULT_DECK_DATA]);
@@ -494,10 +507,15 @@ export default function App() {
 
       } catch (err: any) {
         console.error("Delete Account Error:", err);
+        
+        // Auth 세션 만료 에러 발생 시 무조건 강제 로그아웃
         if (err.code === 'auth/requires-recent-login') {
-          showAlert('보안을 위해 재로그인이 필요합니다. 로그아웃 후 다시 로그인하여 탈퇴를 진행해 주세요.');
+          try { await signOut(auth); } catch {}
+          setCurrentUser(null);
+          setIsSettingsModalOpen(false);
+          showAlert('보안을 위해 재로그인이 필요합니다. 로그아웃 처리되었으니 다시 로그인하여 탈퇴를 시도해 주세요.');
         } else {
-          showAlert('계정 삭제 실패: ' + err.message);
+          showAlert('계정 삭제 실패: ' + (err.message || '알 수 없는 오류'));
         }
       }
     });
@@ -1595,7 +1613,7 @@ export default function App() {
                               </span>
                               <button
                                 onClick={() => handleAddKanjiToDeck(k)}
-                                className="mt-2.5 px-3 py-1 bg-[#FFFFFF] hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold rounded-lg transition shadow-2xs active:scale-95 cursor-pointer"
+                                className="mt-2.5 px-3 py-1 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold rounded-lg transition shadow-2xs active:scale-95 cursor-pointer"
                               >
                                 {t('addWordBtn')}
                               </button>
