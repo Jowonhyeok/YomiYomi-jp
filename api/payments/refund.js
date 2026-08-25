@@ -1,22 +1,33 @@
 import admin from 'firebase-admin';
 
-// 1. Firebase Admin 초기화
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'Method Not Allowed' });
   }
 
   try {
+    // 1. Firebase Admin 초기화 예외 처리
+    if (!admin.apps.length) {
+      const privateKey = process.env.FIREBASE_PRIVATE_KEY 
+        ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') 
+        : undefined;
+
+      if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Server Error: Firebase 환경 변수(FIREBASE_PROJECT_ID 등)가 Vercel에 설정되지 않았습니다.' 
+        });
+      }
+
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: privateKey,
+        }),
+      });
+    }
+
     const authHeader = req.headers.authorization || '';
     const token = authHeader.split('Bearer ')[1];
     
@@ -24,6 +35,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ success: false, message: 'Unauthorized: No token provided' });
     }
 
+    // 2. 토큰 검증
     const decodedToken = await admin.auth().verifyIdToken(token);
     const uid = decodedToken.uid;
 
@@ -37,17 +49,13 @@ export default async function handler(req, res) {
 
     const userData = userSnap.data();
 
-    // ===================================================================
-    // 💥 결제 시간(lastPaymentAt)과 마지막 사용 시간(lastUsedAt) 비교
-    // ===================================================================
+    // 3. 사용 기록 및 시각 비교
     const lastPaymentAt = userData.lastPaymentAt || 0;
     const lastUsedAt = userData.lastUsedAt || 0;
 
-    // 결제한 시각보다 서비스를 실제로 이용한 시각이 더 뒤(미래)라면
     const isUsedAfterPayment = lastUsedAt > lastPaymentAt;
 
     if (isUsedAfterPayment) {
-      // 🚨 결제 이후 사용함: 전액 환불 거부 및 해지 예약만 처리
       await userRef.update({ cancelAtPeriodEnd: true });
       return res.status(200).json({ 
         success: false, 
@@ -56,7 +64,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 4. 결제 후 사용 안 함: 환불 승인 (DB 롤백)
+    // 4. 환불 승인 시 DB 롤백
     await userRef.update({
       isSubscribed: false,
       subscriptionPlan: 'Free',
@@ -68,6 +76,10 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Refund API Error:', error);
-    return res.status(500).json({ success: false, message: 'Internal Server Error: ' + error.message });
+    // 500 에러 발생 시 세부 원인을 메시지로 리턴
+    return res.status(500).json({ 
+      success: false, 
+      message: `Backend Error: ${error.message || JSON.stringify(error)}` 
+    });
   }
 }
