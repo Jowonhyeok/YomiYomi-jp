@@ -125,7 +125,6 @@ export default function App() {
   
   const isSignupFormValid = isPasswordLengthValid && isPasswordSpecialValid && isPasswordMatchValid && authName.trim().length > 0 && authEmail.trim().length > 0 && agreeTerms && agreePrivacy;
 
-  // 💥 서비스 사용 시각을 기록하는 헬퍼 함수 💥
   const recordFeatureUsage = async () => {
     if (currentUser && db && db.app) {
       try {
@@ -180,8 +179,6 @@ export default function App() {
 
           const verifyData = await verifyRes.json();
           if (verifyData.success) {
-            
-            // 💥 모바일 리다이렉트 결제 성공 시각 기록 💥
             if (db && db.app) {
               const userDocRef = doc(db, 'users', user.uid);
               await setDoc(userDocRef, { lastPaymentAt: Date.now() }, { merge: true });
@@ -407,6 +404,7 @@ export default function App() {
     }
   };
 
+  // 💥 서버의 세부 에러 메시지(data.message)를 보존하는 환불 로직 💥
   const handleCancelSubscription = () => {
     const confirmMsg = lang === 'ko' 
       ? "구독 해지 및 환불을 신청하시겠습니까?" 
@@ -424,19 +422,22 @@ export default function App() {
           }
         });
 
+        // JSON 변환 시도
+        const data = await res.json().catch(() => null);
+
         if (!res.ok) {
-          throw new Error(`API 통신 에러 (${res.status}): 환불 처리 서버를 찾을 수 없습니다. 관리자에게 문의해주세요.`);
+          const detailMsg = data?.message || `API 통신 에러 (${res.status})`;
+          showAlert(`환불 처리 실패: ${detailMsg}`);
+          return;
         }
 
-        const data = await res.json();
-
-        if (data.success) {
+        if (data && data.success) {
           const successMsg = lang === 'ko'
             ? "🎉 결제 후 7일 이내 및 미사용 건이 확인되어 결제 전액 환불(취소) 처리되었습니다."
             : "🎉 Full refund processed successfully (Unused & within 7 days).";
           showAlert(successMsg);
           setCurrentUser(prev => prev ? { ...prev, isSubscribed: false, subscriptionPlan: 'Free' } : null);
-        } else if (data.code === 'USAGE_EXISTS' || data.code === 'EXCEEDED_7_DAYS') {
+        } else if (data && (data.code === 'USAGE_EXISTS' || data.code === 'EXCEEDED_7_DAYS')) {
           if (db && db.app) {
             const userDocRef = doc(db, 'users', currentUser.id);
             await setDoc(userDocRef, { cancelAtPeriodEnd: true }, { merge: true });
@@ -444,12 +445,12 @@ export default function App() {
           setCurrentUser(prev => prev ? { ...prev, cancelAtPeriodEnd: true } : null);
           showAlert(data.message);
         } else {
-          showAlert(`Error: ${data.message}`);
+          showAlert(`Error: ${data?.message || '환불 처리에 실패했습니다.'}`);
         }
 
         setIsSettingsModalOpen(false);
       } catch (err: any) {
-        showAlert('환불 처리 중 문제가 발생했습니다: ' + err.message);
+        showAlert('환불 처리 중 문제 발생: ' + err.message);
       }
     });
   };
@@ -586,7 +587,6 @@ export default function App() {
         return;
       }
 
-      // 💥 PC 팝업 결제 성공 시각 기록 💥
       if (db && db.app) {
         const userDocRef = doc(db, 'users', currentUser.id);
         await setDoc(userDocRef, { lastPaymentAt: Date.now() }, { merge: true });
@@ -721,7 +721,6 @@ export default function App() {
       const result = await analyzeJapanese(inputText, lang, imagePayload);
       setAnalysisResult(result);
       
-      // 💥 서비스 사용 시각 기록 (분석 성공 시)
       recordFeatureUsage();
 
     } catch (error: any) {
@@ -877,7 +876,6 @@ export default function App() {
       return;
     }
 
-    // 💥 서비스 사용 시각 기록 (내보내기)
     recordFeatureUsage();
 
     let ankiContent = '#separator:tab\n#html:true\n#tags:YomiYomi Anki\n';
@@ -912,7 +910,6 @@ export default function App() {
       return;
     }
 
-    // 💥 서비스 사용 시각 기록 (시험지 인쇄)
     recordFeatureUsage();
 
     const printWindow = window.open('', '_blank');
@@ -990,7 +987,6 @@ export default function App() {
       return;
     }
 
-    // 💥 서비스 사용 시각 기록 (퀴즈 시작)
     recordFeatureUsage();
 
     const shuffledCards = [...allCards].sort(() => Math.random() - 0.5);
@@ -2500,7 +2496,6 @@ export default function App() {
         </div>
       )}
 
-      {/* 계정 및 설정 모달 */}
       {isSettingsModalOpen && currentUser && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-xl border border-rose-100 relative">
