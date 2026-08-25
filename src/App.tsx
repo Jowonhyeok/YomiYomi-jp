@@ -404,7 +404,6 @@ export default function App() {
     }
   };
 
-  // 💥 서버의 세부 에러 메시지(data.message)를 보존하는 환불 로직 💥
   const handleCancelSubscription = () => {
     const confirmMsg = lang === 'ko' 
       ? "구독 해지 및 환불을 신청하시겠습니까?" 
@@ -422,7 +421,6 @@ export default function App() {
           }
         });
 
-        // JSON 변환 시도
         const data = await res.json().catch(() => null);
 
         if (!res.ok) {
@@ -469,29 +467,37 @@ export default function App() {
     }
   };
 
+  // 💥 회원 탈퇴 로직 보강 (Auth 계정 삭제 선작업 및 예외 처리) 💥
   const handleDeleteAccount = () => {
     showConfirm(t('deleteAccountConfirm'), async () => {
       if (!currentUser || !auth.currentUser) return;
       try {
         const userUid = currentUser.id;
+        const firebaseUser = auth.currentUser;
+
+        // 1. Firebase Auth 계정 삭제 먼저 시도
+        await deleteUser(firebaseUser);
+
+        // 2. Auth 삭제 성공 시 Firestore DB 문서 삭제
         if (db && db.app) {
           const userDocRef = doc(db, 'users', userUid);
           await deleteDoc(userDocRef);
         }
 
-        await deleteUser(auth.currentUser);
-
+        // 3. 앱 상태 초기화
         setCurrentUser(null);
         setIsSettingsModalOpen(false);
         setDecks([DEFAULT_DECK_DATA]);
         localStorage.removeItem('koto_decks');
         setLang('en');
         showAlert(t('deleteAccountSuccess'));
+
       } catch (err: any) {
+        console.error("Delete Account Error:", err);
         if (err.code === 'auth/requires-recent-login') {
-          showAlert('Please log in again before deleting your account.');
+          showAlert('보안을 위해 재로그인이 필요합니다. 로그아웃 후 다시 로그인하여 탈퇴를 진행해 주세요.');
         } else {
-          showAlert('Account deletion failed: ' + err.message);
+          showAlert('계정 삭제 실패: ' + err.message);
         }
       }
     });
@@ -1589,7 +1595,7 @@ export default function App() {
                               </span>
                               <button
                                 onClick={() => handleAddKanjiToDeck(k)}
-                                className="mt-2.5 px-3 py-1 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold rounded-lg transition shadow-2xs active:scale-95 cursor-pointer"
+                                className="mt-2.5 px-3 py-1 bg-[#FFFFFF] hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold rounded-lg transition shadow-2xs active:scale-95 cursor-pointer"
                               >
                                 {t('addWordBtn')}
                               </button>
