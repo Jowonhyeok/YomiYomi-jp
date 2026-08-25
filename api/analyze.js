@@ -1,65 +1,60 @@
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// ----------------------------------------------------------------
-// [Firebase Admin SDK 안전 초기화]
-// ----------------------------------------------------------------
-if (!getApps().length) {
-  let serviceAccount = null;
-
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    try {
-      let rawKey = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
-      if ((rawKey.startsWith('"') && rawKey.endsWith('"')) || (rawKey.startsWith("'") && rawKey.endsWith("'"))) {
-        rawKey = rawKey.slice(1, -1);
-      }
-      serviceAccount = JSON.parse(rawKey.replace(/\\n/g, '\n'));
-    } catch (e) {
-      console.error('[Firebase Key Parse Error]:', e.message);
-    }
-  }
-
-  if (serviceAccount && serviceAccount.project_id) {
-    initializeApp({ credential: cert(serviceAccount) });
-  } else {
-    initializeApp({
-      projectId: process.env.VITE_FIREBASE_PROJECT_ID || 'yomiyomi-jp'
-    });
-  }
-}
-
-const db = getFirestore();
-const auth = getAuth();
-
-// ----------------------------------------------------------------
-// [Vercel Serverless Handler]
-// ----------------------------------------------------------------
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED', message: 'POST 요청만 허용됩니다.' });
   }
 
+  // 1. Bearer Token 추출
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'UNAUTHORIZED', message: '로그인이 필요합니다.' });
   }
 
-  let uid;
+  const idToken = authHeader.split('Bearer ')[1];
+  const firebaseApiKey = process.env.VITE_FIREBASE_API_KEY;
+  const projectId = process.env.VITE_FIREBASE_PROJECT_ID || 'yomiyomi-jp';
+
+  let uid = null;
+
+  // 2. Firebase Auth REST API로 토큰 검증 (firebase-admin 미사용)
   try {
-    const idToken = authHeader.split('Bearer ')[1];
-    const decodedToken = await auth.verifyIdToken(idToken);
-    uid = decodedToken.uid;
+    const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken })
+    });
+
+    if (!verifyRes.ok) {
+      return res.status(401).json({ error: 'INVALID_TOKEN', message: '유효하지 않은 인증 토큰입니다.' });
+    }
+
+    const verifyData = await verifyRes.json();
+    uid = verifyData.users?.[0]?.localId;
+    if (!uid) throw new Error('UID를 찾을 수 없습니다.');
   } catch (err) {
-    return res.status(401).json({ error: 'INVALID_TOKEN', message: '유효하지 않은 인증 토큰입니다.' });
+    return res.status(401).json({ error: 'INVALID_TOKEN', message: '인증 검증 실패: ' + err.message });
+  }
+
+  // 3. Firestore REST API로 유저 데이터 및 사용량 조회
+  let userData = {};
+  try {
+    const userDocRes = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`);
+    if (userDocRes.ok) {
+      const docJson = await userDocRes.json();
+      const fields = docJson.fields || {};
+      userData = {
+        isSubscribed: fields.isSubscribed?.booleanValue || false,
+        dailyAnalyzeCount: parseInt(fields.dailyAnalyzeCount?.integerValue || '0', 10),
+        lastAnalyzeDate: fields.lastAnalyzeDate?.stringValue || '',
+        subscriptionEndDate: fields.subscriptionEndDate?.stringValue || ''
+      };
+    }
+  } catch (e) {
+    console.error('Firestore User Read Warning:', e.message);
   }
 
   try {
-    const userDocRef = db.collection('users').doc(uid);
-    const userDoc = await userDocRef.get();
-    const userData = userDoc.data() || {};
-
     let isSubscribed = userData.isSubscribed || false;
     if (userData.subscriptionEndDate && new Date(userData.subscriptionEndDate) < new Date()) {
       isSubscribed = false;
@@ -75,12 +70,14 @@ export default async function handler(req, res) {
     const today = new Date().toISOString().split('T')[0];
     let dailyCount = userData.lastAnalyzeDate === today ? (userData.dailyAnalyzeCount || 0) : 0;
 
+    // 일일 사용량 제한 체크
     if (!isSubscribed && dailyCount >= 3) {
       return res.status(429).json({ error: 'DAILY_LIMIT_EXCEEDED', message: '오늘의 무료 분석 횟수(3회)를 모두 사용하셨습니다.' });
     } else if (isSubscribed && dailyCount >= 300) {
       return res.status(429).json({ error: 'FUP_LIMIT_EXCEEDED', message: '일일 최대 분석 제공량을 초과했습니다. 내일 다시 이용해 주세요.' });
     }
 
+    // 4. Gemini AI 분석 실행
     const apiKey = process.env.GEMINI_API_KEY || '';
     if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
 
@@ -104,7 +101,7 @@ export default async function handler(req, res) {
 
     promptText += '\n[Required JSON Schema Example]:\n{\n' +
       '  "isJapanese": true,\n' +
-      '  "rubySentences": ["<ruby>私<rt>わたし</rt></ruby>は<ruby>学生<rt>がくせい</rt></ruby>です。"],\n' +
+      '  "rubySentences": ["<ruby>私<rt>わたし</rt></ruby>は<ruby>学生<rt>がくせい</rt></ruby>입니다."],\n' +
       '  "kanjiList": [{"kanji": "私", "readings": "わたし", "meaning": {"ko": "나", "en": "I, me", "zh-CN": "我", "zh-TW": "我", "ja": "わたし"}}],\n' +
       '  "wordList": [{"word": "学生", "reading": "がくせい", "partOfSpeech": "명사", "meaning": {"ko": "학생", "en": "student", "zh-CN": "학생", "zh-TW": "學生", "ja": "がくせい"}, "jlpt": "N5"}],\n' +
       '  "grammarList": [{"grammar": "です", "explanation": {"ko": "~입니다", "en": "is/am/are", "zh-CN": "是", "zh-TW": "是", "ja": "〜です"}}]\n' +
@@ -120,7 +117,21 @@ export default async function handler(req, res) {
     let cleanedJsonText = rawText.split('```json').join('').split('```').join('').trim();
     const parsedData = JSON.parse(cleanedJsonText);
 
-    await userDocRef.set({ dailyAnalyzeCount: dailyCount + 1, lastAnalyzeDate: today }, { merge: true });
+    // 5. Firestore REST API로 사용량 업데이트
+    try {
+      await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fields: {
+            dailyAnalyzeCount: { integerValue: String(dailyCount + 1) },
+            lastAnalyzeDate: { stringValue: today }
+          }
+        })
+      });
+    } catch (updateErr) {
+      console.error('Firestore Update Error:', updateErr.message);
+    }
 
     return res.status(200).json(parsedData);
 
