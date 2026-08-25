@@ -14,6 +14,7 @@ export default async function handler(req, res) {
 
   let uid = null;
 
+  // 1. Firebase Auth 토큰 검증
   try {
     const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`, {
       method: 'POST',
@@ -43,6 +44,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ success: false, message: 'PORTONE_API_SECRET 환경변수가 설정되지 않았습니다.' });
     }
 
+    // 2. 포트원 결제내역 단건 조회 (위변조 검증)
     const portoneRes = await fetch(`https://api.portone.io/payments/${paymentId}`, {
       method: 'GET',
       headers: {
@@ -61,15 +63,18 @@ export default async function handler(req, res) {
     }
 
     let addDays = 30;
-    if (planName.includes('6') || planName.includes('6m')) addDays = 180;
-    else if (planName.includes('1년') || planName.includes('Year') || planName.includes('1y')) addDays = 365;
+    const pName = String(planName || 'Premium');
+    if (pName.includes('6') || pName.includes('6m')) addDays = 180;
+    else if (pName.includes('1년') || pName.includes('Year') || pName.includes('1y')) addDays = 365;
 
     const now = new Date();
     let baseDate = now;
 
-    // 💥 기존 데이터 읽기에도 인증(Auth) 추가
+    const documentName = `projects/${projectId}/databases/(default)/documents/users/${userId}`;
+
+    // 3. 기존 사용자 구독 기한 읽기
     try {
-      const userDocRes = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}`, {
+      const userDocRes = await fetch(`https://firestore.googleapis.com/v1/${documentName}`, {
         headers: { 'Authorization': `Bearer ${idToken}` }
       });
       if (userDocRes.ok) {
@@ -87,31 +92,36 @@ export default async function handler(req, res) {
     const newEndDateObj = new Date(baseDate.getTime() + addDays * 24 * 60 * 60 * 1000);
     const formattedEndDate = newEndDateObj.toISOString().split('T')[0];
 
-    // 💥 가장 중요한 DB 수정 부분! (Authorization 헤더 추가로 권한 부여)
-    const patchRes = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}?updateMask.fieldPaths=isSubscribed&updateMask.fieldPaths=subscriptionPlan&updateMask.fieldPaths=subscriptionEndDate&updateMask.fieldPaths=lastPaymentId&updateMask.fieldPaths=lastPaymentDate&updateMask.fieldPaths=cancelAtPeriodEnd`, {
+    // 4. Firestore DB 업데이트 💥 (name 필드 추가로 400 에러 원천 차단)
+    const patchRes = await fetch(`https://firestore.googleapis.com/v1/${documentName}?updateMask.fieldPaths=isSubscribed&updateMask.fieldPaths=subscriptionPlan&updateMask.fieldPaths=subscriptionEndDate&updateMask.fieldPaths=lastPaymentId&updateMask.fieldPaths=lastPaymentDate&updateMask.fieldPaths=cancelAtPeriodEnd`, {
       method: 'PATCH',
       headers: { 
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${idToken}` 
       },
       body: JSON.stringify({
+        name: documentName,  // <--- 이 속성이 빠져서 발생했던 에러입니다!
         fields: {
           isSubscribed: { booleanValue: true },
-          subscriptionPlan: { stringValue: planName },
+          subscriptionPlan: { stringValue: pName },
           subscriptionEndDate: { stringValue: formattedEndDate },
-          lastPaymentId: { stringValue: paymentId },
+          lastPaymentId: { stringValue: String(paymentId) },
           lastPaymentDate: { stringValue: now.toISOString() },
           cancelAtPeriodEnd: { booleanValue: false }
         }
       })
     });
 
-    if (!patchRes.ok) throw new Error("Firestore DB Update Failed");
+    if (!patchRes.ok) {
+      const errText = await patchRes.text();
+      console.error('[Firestore Update Failed Detail]:', errText);
+      throw new Error(errText); // Vercel 서버 로그에 정확한 실패 원인 기록
+    }
 
     return res.status(200).json({ success: true, message: '결제 검증 및 프리미엄 승인이 완료되었습니다.' });
 
   } catch (err) {
     console.error('[Verify Payment Error]:', err.message || err);
-    return res.status(500).json({ success: false, message: err.message || '검증 중 오류가 발생했습니다.' });
+    return res.status(500).json({ success: false, message: 'DB 업데이트 실패: ' + (err.message || '알 수 없는 오류') });
   }
 }
