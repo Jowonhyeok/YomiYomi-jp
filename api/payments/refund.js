@@ -3,22 +3,21 @@ import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
 
-// Firebase Admin 안전 초기화 함수
-function initFirebaseAdmin() {
+function getAdminApp() {
   if (admin.apps.length > 0) {
-    return admin.app();
+    return admin.apps[0];
   }
 
   let certConfig = null;
 
-  // 1. require를 통한 serviceAccountKey.json 파일 로드 시도
+  // 1. require를 통한 serviceAccountKey.json 파일 로드
   try {
     certConfig = require('../serviceAccountKey.json');
   } catch (e) {
-    // 로컬 파일이 없는 경우 패스
+    // 로컬 파일 누락 시 환경변수로 폴백
   }
 
-  // 2. Vercel 환경 변수(FIREBASE_SERVICE_ACCOUNT) 로드 시도
+  // 2. Vercel 환경 변수(FIREBASE_SERVICE_ACCOUNT) 로드
   if (!certConfig && process.env.FIREBASE_SERVICE_ACCOUNT) {
     try {
       const rawEnv = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
@@ -33,10 +32,10 @@ function initFirebaseAdmin() {
   }
 
   if (!certConfig) {
-    throw new Error('Firebase 서비스 계정 키(serviceAccountKey.json 또는 FIREBASE_SERVICE_ACCOUNT 환경 변수)를 읽을 수 없습니다.');
+    throw new Error('Firebase 서비스 계정 키를 찾을 수 없습니다.');
   }
 
-  // private_key 줄바꿈(\\n) 복원
+  // private_key 줄바꿈(\\n) 정제
   if (certConfig.private_key) {
     certConfig.private_key = certConfig.private_key.replace(/\\n/g, '\n');
   }
@@ -52,8 +51,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 핸들러 실행 시점에 안전하게 초기화 확인
-    initFirebaseAdmin();
+    // 💥 핵심: 생성된 adminApp 인스턴스로 auth와 firestore를 직접 호출
+    const app = getAdminApp();
+    const auth = admin.auth(app);
+    const db = admin.firestore(app);
 
     const authHeader = req.headers.authorization || '';
     const token = authHeader.split('Bearer ')[1];
@@ -62,10 +63,9 @@ export default async function handler(req, res) {
       return res.status(401).json({ success: false, message: 'Unauthorized: No token provided' });
     }
 
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await auth.verifyIdToken(token);
     const uid = decodedToken.uid;
 
-    const db = admin.firestore();
     const userRef = db.collection('users').doc(uid);
     const userSnap = await userRef.get();
 
