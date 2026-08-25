@@ -3,17 +3,47 @@ import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
 
-if (!admin.apps.length) {
-  try {
-    // require를 사용하면 Vercel이 serviceAccountKey.json을 서버 배포 파일에 자동 번들링합니다.
-    const serviceAccount = require('../serviceAccountKey.json');
-    
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-  } catch (error) {
-    console.error('Firebase Admin init error via require:', error);
+// Firebase Admin 안전 초기화 함수
+function initFirebaseAdmin() {
+  if (admin.apps.length > 0) {
+    return admin.app();
   }
+
+  let certConfig = null;
+
+  // 1. require를 통한 serviceAccountKey.json 파일 로드 시도
+  try {
+    certConfig = require('../serviceAccountKey.json');
+  } catch (e) {
+    // 로컬 파일이 없는 경우 패스
+  }
+
+  // 2. Vercel 환경 변수(FIREBASE_SERVICE_ACCOUNT) 로드 시도
+  if (!certConfig && process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      const rawEnv = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+      const decodedEnv = rawEnv.startsWith('{') 
+        ? rawEnv 
+        : Buffer.from(rawEnv, 'base64').toString('utf8');
+      
+      certConfig = JSON.parse(decodedEnv);
+    } catch (e) {
+      console.error('FIREBASE_SERVICE_ACCOUNT Env Parsing Error:', e);
+    }
+  }
+
+  if (!certConfig) {
+    throw new Error('Firebase 서비스 계정 키(serviceAccountKey.json 또는 FIREBASE_SERVICE_ACCOUNT 환경 변수)를 읽을 수 없습니다.');
+  }
+
+  // private_key 줄바꿈(\\n) 복원
+  if (certConfig.private_key) {
+    certConfig.private_key = certConfig.private_key.replace(/\\n/g, '\n');
+  }
+
+  return admin.initializeApp({
+    credential: admin.credential.cert(certConfig),
+  });
 }
 
 export default async function handler(req, res) {
@@ -22,6 +52,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    // 핸들러 실행 시점에 안전하게 초기화 확인
+    initFirebaseAdmin();
+
     const authHeader = req.headers.authorization || '';
     const token = authHeader.split('Bearer ')[1];
     
