@@ -199,8 +199,10 @@ export async function analyzeJapanese(text: string, targetLang: Lang, imageBase6
   }
 
   const data = await response.json();
+  
   return {
     isJapanese: Boolean(data.isJapanese),
+    translatedText: data.translatedText || '', // 💥 드디어 화면으로 넘어갑니다!
     rubySentences: Array.isArray(data.rubySentences) ? data.rubySentences : [],
     kanjiList: Array.isArray(data.kanjiList) ? data.kanjiList : [],
     wordList: Array.isArray(data.wordList) ? data.wordList : [],

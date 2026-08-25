@@ -40,7 +40,7 @@ export default async function handler(req, res) {
   try {
     const portoneApiSecret = process.env.PORTONE_API_SECRET;
     if (!portoneApiSecret) {
-      return res.status(500).json({ success: false, message: 'PORTONE_API_SECRET 환경변수가 설정되지 않았증습니다.' });
+      return res.status(500).json({ success: false, message: 'PORTONE_API_SECRET 환경변수가 설정되지 않았습니다.' });
     }
 
     const portoneRes = await fetch(`https://api.portone.io/payments/${paymentId}`, {
@@ -67,8 +67,11 @@ export default async function handler(req, res) {
     const now = new Date();
     let baseDate = now;
 
+    // 💥 기존 데이터 읽기에도 인증(Auth) 추가
     try {
-      const userDocRes = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}`);
+      const userDocRes = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}`, {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      });
       if (userDocRes.ok) {
         const userDocJson = await userDocRes.json();
         const existingEndDateStr = userDocJson.fields?.subscriptionEndDate?.stringValue;
@@ -84,10 +87,13 @@ export default async function handler(req, res) {
     const newEndDateObj = new Date(baseDate.getTime() + addDays * 24 * 60 * 60 * 1000);
     const formattedEndDate = newEndDateObj.toISOString().split('T')[0];
 
-    // Firestore users 문서에 프리미엄 권한 즉시 부여
-    await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}?updateMask.fieldPaths=isSubscribed&updateMask.fieldPaths=subscriptionPlan&updateMask.fieldPaths=subscriptionEndDate&updateMask.fieldPaths=lastPaymentId&updateMask.fieldPaths=lastPaymentDate&updateMask.fieldPaths=cancelAtPeriodEnd`, {
+    // 💥 가장 중요한 DB 수정 부분! (Authorization 헤더 추가로 권한 부여)
+    const patchRes = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${userId}?updateMask.fieldPaths=isSubscribed&updateMask.fieldPaths=subscriptionPlan&updateMask.fieldPaths=subscriptionEndDate&updateMask.fieldPaths=lastPaymentId&updateMask.fieldPaths=lastPaymentDate&updateMask.fieldPaths=cancelAtPeriodEnd`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}` 
+      },
       body: JSON.stringify({
         fields: {
           isSubscribed: { booleanValue: true },
@@ -99,6 +105,8 @@ export default async function handler(req, res) {
         }
       })
     });
+
+    if (!patchRes.ok) throw new Error("Firestore DB Update Failed");
 
     return res.status(200).json({ success: true, message: '결제 검증 및 프리미엄 승인이 완료되었습니다.' });
 

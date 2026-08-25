@@ -5,7 +5,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED', message: 'POST 요청만 허용됩니다.' });
   }
 
-  // 1. Authorization 토큰 추출
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'UNAUTHORIZED', message: '로그인이 필요합니다.' });
@@ -17,7 +16,6 @@ export default async function handler(req, res) {
 
   let uid = null;
 
-  // 2. Firebase Auth REST API로 토큰 검증
   try {
     const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`, {
       method: 'POST',
@@ -36,10 +34,11 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'INVALID_TOKEN', message: '인증 검증 실패: ' + err.message });
   }
 
-  // 3. Firestore REST API로 사용자 정보 및 사용량 조회
   let userData = {};
   try {
-    const userDocRes = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`);
+    const userDocRes = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`, {
+      headers: { 'Authorization': `Bearer ${idToken}` }
+    });
     if (userDocRes.ok) {
       const docJson = await userDocRes.json();
       const fields = docJson.fields || {};
@@ -70,14 +69,12 @@ export default async function handler(req, res) {
     const today = new Date().toISOString().split('T')[0];
     let dailyCount = userData.lastAnalyzeDate === today ? (userData.dailyAnalyzeCount || 0) : 0;
 
-    // 일일 횟수 검증 (무료 3회, 프리미엄 300회)
     if (!isSubscribed && dailyCount >= 3) {
       return res.status(429).json({ error: 'DAILY_LIMIT_EXCEEDED', message: '오늘의 무료 분석 횟수(3회)를 모두 사용하셨습니다.' });
     } else if (isSubscribed && dailyCount >= 300) {
       return res.status(429).json({ error: 'FUP_LIMIT_EXCEEDED', message: '일일 최대 분석 제공량을 초과했습니다. 내일 다시 이용해 주세요.' });
     }
 
-    // 4. Gemini AI 실행 (gemini-3.5-flash-lite)
     const apiKey = process.env.GEMINI_API_KEY || '';
     if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
 
@@ -95,10 +92,10 @@ export default async function handler(req, res) {
 
     let promptText = 'You are a professional Japanese language tutor. Analyze the following Japanese input and respond strictly in valid JSON format.\n';
     
-    // 💥 수정된 부분: 번역 데이터가 오브젝트가 아닌 단일 텍스트(String)로 나오도록 프롬프트 강화
+    // 번역 결과를 무조건 단순 String 형태로 받도록 강제
     promptText += 'CRITICAL INSTRUCTIONS:\n';
     promptText += '1. "translatedText" MUST be a SINGLE plain string containing the full natural translation of the entire input text in the target language: "' + targetLang + '" (' + langGuide + '). Do NOT make it an object.\n';
-    promptText += '2. For "meaning" and "explanation" fields inside lists, provide translations as a multi-language object. Ensure "zh-CN" and "zh-TW" are both accurately populated.\n\n';
+    promptText += '2. For "meaning" and "explanation" fields inside lists, provide translations as a multi-language object.\n\n';
 
     if (text) promptText += '[Input Text]: "' + text + '"\n';
     if (imageBase64) promptText += '[Instruction]: Extract and analyze the Japanese text from the attached image.\n';
@@ -122,10 +119,13 @@ export default async function handler(req, res) {
     let cleanedJsonText = rawText.split('```json').join('').split('```').join('').trim();
     const parsedData = JSON.parse(cleanedJsonText);
 
-    // 5. Firestore REST API 사용량 업데이트
+    // 💥 횟수 업데이트에도 인증(Auth) 추가 (이게 없어서 무료 횟수 차감이 안됐음)
     await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}` 
+      },
       body: JSON.stringify({
         fields: {
           dailyAnalyzeCount: { integerValue: String(dailyCount + 1) },
