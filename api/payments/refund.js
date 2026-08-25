@@ -1,32 +1,38 @@
 import admin from 'firebase-admin';
+import path from 'path';
+import fs from 'fs';
 
 if (!admin.apps.length) {
   let certConfig = null;
 
-  try {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      const rawEnv = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
-      
-      // 1. JSON 형태 문자열인지 Base64 문자열인지 자동 구분
-      if (rawEnv.startsWith('{')) {
-        certConfig = JSON.parse(rawEnv);
-      } else {
-        // Base64 디코딩
-        const decodedEnv = Buffer.from(rawEnv, 'base64').toString('utf8');
-        certConfig = JSON.parse(decodedEnv);
-      }
+  // 프로젝트 내 serviceAccountKey.json 직접 파일 로드
+  const jsonPath = path.join(process.cwd(), 'api', 'serviceAccountKey.json');
 
-      // 2. private_key의 개행문자(\\n) 완벽 복원
-      if (certConfig && certConfig.private_key) {
-        certConfig.private_key = certConfig.private_key.replace(/\\n/g, '\n');
-      }
+  if (fs.existsSync(jsonPath)) {
+    try {
+      certConfig = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+    } catch (e) {
+      console.error('Failed to read serviceAccountKey.json:', e);
     }
-  } catch (e) {
-    console.error('Firebase Service Account Parsing Error:', e);
+  }
+
+  // 파일이 없으면 환경 변수(Base64) 로드
+  if (!certConfig && process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      const rawEnv = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+      const decodedEnv = rawEnv.startsWith('{') ? rawEnv : Buffer.from(rawEnv, 'base64').toString('utf8');
+      certConfig = JSON.parse(decodedEnv);
+    } catch (e) {
+      console.error('Failed to parse env:', e);
+    }
   }
 
   if (!certConfig) {
-    throw new Error('FIREBASE_SERVICE_ACCOUNT 파싱 실패. Vercel 환경 변수를 확인해주세요.');
+    throw new Error('Firebase 서비스 계정 키를 찾을 수 없습니다.');
+  }
+
+  if (certConfig.private_key) {
+    certConfig.private_key = certConfig.private_key.replace(/\\n/g, '\n');
   }
 
   admin.initializeApp({
@@ -47,7 +53,6 @@ export default async function handler(req, res) {
       return res.status(401).json({ success: false, message: 'Unauthorized: No token provided' });
     }
 
-    // 토큰 검증
     const decodedToken = await admin.auth().verifyIdToken(token);
     const uid = decodedToken.uid;
 
@@ -61,7 +66,6 @@ export default async function handler(req, res) {
 
     const userData = userSnap.data();
 
-    // 시각 비교 (결제 시각 vs 사용 시각)
     const lastPaymentAt = userData.lastPaymentAt || 0;
     const lastUsedAt = userData.lastUsedAt || 0;
 
@@ -76,7 +80,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // 미사용 건 전액 환불 및 DB 초기화
     await userRef.update({
       isSubscribed: false,
       subscriptionPlan: 'Free',
