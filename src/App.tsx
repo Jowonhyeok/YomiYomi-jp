@@ -376,7 +376,6 @@ export default function App() {
     }
   };
 
-  // 💥 절대 뻗지 않는 안전한 로그아웃 💥
   const handleLogout = () => {
     showConfirm(t('logoutConfirm'), async () => {
       try {
@@ -444,10 +443,7 @@ export default function App() {
           showAlert(successMsg);
           setCurrentUser(prev => prev ? { ...prev, isSubscribed: false, subscriptionPlan: 'Free' } : null);
         } else if (data && (data.code === 'USAGE_EXISTS' || data.code === 'EXCEEDED_7_DAYS')) {
-          if (db && db.app) {
-            const userDocRef = doc(db, 'users', currentUser.id);
-            await setDoc(userDocRef, { cancelAtPeriodEnd: true }, { merge: true });
-          }
+          // 💥 백엔드 Admin SDK가 이미 DB를 수정했으므로 프론트엔드는 직접 setDoc을 하지 않고 상태 반영 및 알림만 수행
           setCurrentUser(prev => prev ? { ...prev, cancelAtPeriodEnd: true } : null);
           showAlert(data.message);
         } else {
@@ -475,7 +471,6 @@ export default function App() {
     }
   };
 
-  // 💥 세션 만료 및 권한 오류 방어형 탈퇴 처리 💥
   const handleDeleteAccount = () => {
     showConfirm(t('deleteAccountConfirm'), async () => {
       if (!currentUser || !auth.currentUser) return;
@@ -484,7 +479,6 @@ export default function App() {
       const firebaseUser = auth.currentUser;
 
       try {
-        // 1. Firestore DB 데이터 먼저 지우기 시도 (오류 무시 처리)
         if (db && db.app) {
           try {
             const userDocRef = doc(db, 'users', userUid);
@@ -494,10 +488,8 @@ export default function App() {
           }
         }
 
-        // 2. Firebase Auth 계정 삭제
         await deleteUser(firebaseUser);
 
-        // 3. 정상 탈퇴 성공
         setCurrentUser(null);
         setIsSettingsModalOpen(false);
         setDecks([DEFAULT_DECK_DATA]);
@@ -508,7 +500,6 @@ export default function App() {
       } catch (err: any) {
         console.error("Delete Account Error:", err);
         
-        // Auth 세션 만료 에러 발생 시 무조건 강제 로그아웃
         if (err.code === 'auth/requires-recent-login') {
           try { await signOut(auth); } catch {}
           setCurrentUser(null);
