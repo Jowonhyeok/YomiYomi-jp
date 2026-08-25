@@ -49,6 +49,31 @@ declare global {
   }
 }
 
+// 비로그인 상태 및 초기 신규 사용자용 디폴트 덱 정의
+const DEFAULT_DECK_DATA: Deck = {
+  id: 'default',
+  name: 'Default Deck (N5 基礎単語)',
+  cards: [
+    {
+      id: 'default-card-1',
+      word: '日本語',
+      reading: 'にほんご',
+      partOfSpeech: '명사',
+      meaning: '일본어',
+      jlpt: 'N5'
+    },
+    {
+      id: 'default-card-2',
+      word: '友達',
+      reading: 'ともだち',
+      partOfSpeech: '명사',
+      meaning: '친구',
+      jlpt: 'N5'
+    }
+  ],
+  createdAt: new Date().toISOString()
+};
+
 export default function App() {
   const { currentUser, lang, setCurrentUser, setLang } = useUserStore();
   const { 
@@ -211,10 +236,8 @@ export default function App() {
               dailyAnalyzeCount: 0,
               lang: 'en'
             };
-            {/* 기본 단어장 이름을 Default Deck으로 지정 */}
-            const initialDeck: Deck[] = [
-              { id: 'default', name: 'Default Deck', cards: [], createdAt: new Date().toISOString() }
-            ];
+            {/* 신규 가입 사용자를 위한 디폴트 덱 지정 */}
+            const initialDeck: Deck[] = [DEFAULT_DECK_DATA];
             setCurrentUser(newUser);
             setDoc(userDocRef, { ...newUser, decks: initialDeck });
           }
@@ -228,8 +251,13 @@ export default function App() {
           const saved = localStorage.getItem('koto_decks');
           if (saved) {
             setDecks(sanitizeDecks(JSON.parse(saved)));
+          } else {
+            // 비로그인 상태일 때 디폴트 덱 지정
+            setDecks([DEFAULT_DECK_DATA]);
           }
-        } catch {}
+        } catch {
+          setDecks([DEFAULT_DECK_DATA]);
+        }
       }
     });
 
@@ -322,7 +350,7 @@ export default function App() {
   const handleLogout = () => {
     showConfirm(t('logoutConfirm'), async () => {
       await signOut(auth);
-      setDecks([{ id: 'default', name: 'Default Deck', cards: [], createdAt: new Date().toISOString() }]);
+      setDecks([DEFAULT_DECK_DATA]);
       setLang('en');
     });
   };
@@ -418,7 +446,7 @@ export default function App() {
 
         setCurrentUser(null);
         setIsSettingsModalOpen(false);
-        setDecks([{ id: 'default', name: 'Default Deck', cards: [], createdAt: new Date().toISOString() }]);
+        setDecks([DEFAULT_DECK_DATA]);
         localStorage.removeItem('koto_decks');
         setLang('en');
         showAlert(t('deleteAccountSuccess'));
@@ -956,7 +984,7 @@ export default function App() {
     }
   };
 
-  const currentActiveDeck = decks.find(d => String(d.id) === String(selectedDeckId)) || decks[0] || { name: 'Default Deck', cards: [] };
+  const currentActiveDeck = decks.find(d => String(d.id) === String(selectedDeckId)) || decks[0] || DEFAULT_DECK_DATA;
 
   const filteredCards = (currentActiveDeck.cards || []).filter(c => 
     (c.word || '').toLowerCase().includes(searchKeyword.toLowerCase()) ||
