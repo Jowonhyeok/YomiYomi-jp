@@ -24,7 +24,9 @@ if (!getApps().length) {
   // 1. Vercel 환경변수(FIREBASE_SERVICE_ACCOUNT)에 전체 JSON 문자열이 있는 경우
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     try {
-      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      // Vercel 개행문자(\n) 처리 포함 안전한 파싱
+      const rawEnv = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+      serviceAccount = JSON.parse(rawEnv.replace(/\\n/g, '\n'));
     } catch (e) {
       console.error('FIREBASE_SERVICE_ACCOUNT JSON 파싱 에러:', e.message);
     }
@@ -55,12 +57,14 @@ const auth = getAuth();
 
 let redis = null;
 try {
-  redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-    maxRetriesPerRequest: 1,
-    enableOfflineQueue: false,
-    retryStrategy: function () { return null; }
-  });
-  redis.on('error', function () {});
+  if (process.env.REDIS_URL) {
+    redis = new Redis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: 1,
+      enableOfflineQueue: false,
+      retryStrategy: function () { return null; }
+    });
+    redis.on('error', function () {});
+  }
 } catch (e) {
   redis = null;
 }
@@ -147,160 +151,9 @@ async function releaseLock(userId) {
 }
 
 // ----------------------------------------------------------------
-// [보안 강화] 포트원 V2 결제 검증 API
+// AI 일본어 분석 API (Vercel Serverless 엔드포인트)
 // ----------------------------------------------------------------
-app.post('/api/payments/verify', async function (req, res) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
-  }
-
-  let uid;
-  try {
-    const idToken = authHeader.split('Bearer ')[1];
-    const decodedToken = await auth.verifyIdToken(idToken);
-    uid = decodedToken.uid;
-  } catch (err) {
-    return res.status(401).json({ success: false, message: '유효하지 않은 인증 토큰입니다.' });
-  }
-
-  const { paymentId, planName, userId } = req.body;
-
-  if (uid !== userId) {
-    return res.status(403).json({ success: false, message: '본인의 결제 요청만 검증할 수 있습니다.' });
-  }
-
-  try {
-    const portoneApiSecret = process.env.PORTONE_API_SECRET;
-    if (!portoneApiSecret) throw new Error('PORTONE_API_SECRET 환경변수가 설정되지 않았습니다.');
-
-    const paymentDocRef = db.collection('payments').doc(paymentId);
-    const existingPayment = await paymentDocRef.get();
-    if (existingPayment.exists) {
-      return res.status(400).json({ success: false, message: '이미 처리된 결제 영수증입니다.' });
-    }
-
-    const portoneRes = await fetch(`https://api.portone.io/payments/${paymentId}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `PortOne ${portoneApiSecret}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!portoneRes.ok) return res.status(400).json({ success: false, message: '포트원 결제내역 조회 실패' });
-    const paymentData = await portoneRes.json();
-    if (paymentData.status !== 'PAID') return res.status(400).json({ success: false, message: '결제가 완료 상태(PAID)가 아닙니다.' });
-
-    const paidAmount = paymentData.amount?.total;
-    const currency = paymentData.currency;
-    let expectedPriceUsd = 3.90;
-    let addDays = 30;
-
-    if (planName.includes('6') || planName.includes('6m')) {
-      expectedPriceUsd = 18.99; addDays = 180;
-    } else if (planName.includes('1년') || planName.includes('Year') || planName.includes('1y')) {
-      expectedPriceUsd = 23.99; addDays = 365;
-    }
-
-    if (currency === 'CURRENCY_USD') {
-      const expectedCents = Math.round(expectedPriceUsd * 100);
-      if (paidAmount !== expectedCents) return res.status(400).json({ success: false, message: '결제 금액이 플랜 정가와 일치하지 않습니다.' });
-    }
-
-    const userDocRef = db.collection('users').doc(userId);
-    const userDoc = await userDocRef.get();
-    const userData = userDoc.data() || {};
-    const now = new Date();
-    let baseDate = now;
-
-    if (userData.subscriptionEndDate) {
-      const existingEndDate = new Date(userData.subscriptionEndDate);
-      if (existingEndDate > now) baseDate = existingEndDate;
-    }
-
-    const newEndDateObj = new Date(baseDate.getTime() + addDays * 24 * 60 * 60 * 1000);
-    const formattedEndDate = newEndDateObj.toISOString().split('T')[0];
-
-    await paymentDocRef.set({
-      paymentId: paymentId, userId: userId, planName: planName, amount: paidAmount, currency: currency, createdAt: now.toISOString(), status: 'PAID'
-    });
-
-    await userDocRef.set({
-      isSubscribed: true, subscriptionPlan: planName, subscriptionEndDate: formattedEndDate, lastPaymentId: paymentId, lastPaymentDate: now.toISOString(), cancelAtPeriodEnd: false
-    }, { merge: true });
-
-    return res.json({ success: true, message: '결제 검증 및 프리미엄 승인이 완료되었습니다.' });
-  } catch (err) {
-    return res.status(500).json({ success: false, message: err.message || '검증 중 오류가 발생했습니다.' });
-  }
-});
-
-// ----------------------------------------------------------------
-// 자동 환불 처리 API
-// ----------------------------------------------------------------
-app.post('/api/payments/refund', async function (req, res) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
-
-  let uid;
-  try {
-    const idToken = authHeader.split('Bearer ')[1];
-    uid = (await auth.verifyIdToken(idToken)).uid;
-  } catch (err) {
-    return res.status(401).json({ success: false, message: '인증 에러' });
-  }
-
-  try {
-    const userDocRef = db.collection('users').doc(uid);
-    const userDoc = await userDocRef.get();
-    if (!userDoc.exists) return res.status(404).json({ success: false, message: '사용자를 찾을 수 없음.' });
-
-    const userData = userDoc.data();
-    const lastPaymentId = userData.lastPaymentId;
-    if (!userData.isSubscribed || !lastPaymentId) return res.status(400).json({ success: false, message: '결제 건이 없습니다.' });
-
-    const paymentDocRef = db.collection('payments').doc(lastPaymentId);
-    const paymentDoc = await paymentDocRef.get();
-    if (!paymentDoc.exists) return res.status(404).json({ success: false, message: '내역 없음.' });
-
-    const paymentData = paymentDoc.data();
-    const now = new Date();
-    const paymentDate = new Date(paymentData.createdAt || userData.lastPaymentDate);
-    const diffDays = (now.getTime() - paymentDate.getTime()) / (1000 * 60 * 60 * 24);
-
-    if (diffDays > 7) return res.status(200).json({ success: false, code: 'EXCEEDED_7_DAYS', message: '7일이 경과하여 즉시 환불이 불가합니다.' });
-
-    const usageLogsQuery = await db.collection('usage_logs').where('uid', '==', uid).get();
-    let usedAfterPayment = false;
-    usageLogsQuery.forEach(doc => {
-      if (doc.data().date >= paymentDate.toISOString().split('T')[0]) usedAfterPayment = true;
-    });
-
-    if (usedAfterPayment) return res.status(200).json({ success: false, code: 'USAGE_EXISTS', message: '이용 기록이 있어 환불 불가.' });
-
-    const portoneApiSecret = process.env.PORTONE_API_SECRET;
-    const portoneRes = await fetch(`https://api.portone.io/payments/${lastPaymentId}/cancel`, {
-      method: 'POST',
-      headers: { 'Authorization': `PortOne ${portoneApiSecret}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason: '7일 이내 미사용 환불' })
-    });
-
-    if (!portoneRes.ok) return res.status(500).json({ success: false, message: 'PG사 결제 취소 실패' });
-
-    await userDocRef.set({ isSubscribed: false, subscriptionPlan: 'Free', subscriptionEndDate: null, cancelAtPeriodEnd: false }, { merge: true });
-    await paymentDocRef.set({ status: 'REFUNDED', refundedAt: now.toISOString() }, { merge: true });
-
-    return res.json({ success: true, message: '전액 환불 처리 완료.' });
-  } catch (err) {
-    return res.status(500).json({ success: false, message: '환불 중 에러.' });
-  }
-});
-
-// ----------------------------------------------------------------
-// AI 일본어 분석 API (프리미엄 FUP 적용)
-// ----------------------------------------------------------------
-app.post('/api/analyze', async function (req, res) {
+app.post('*', async function (req, res) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'UNAUTHORIZED', message: '로그인이 필요합니다.' });
@@ -364,8 +217,9 @@ app.post('/api/analyze', async function (req, res) {
       if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
 
       const genAI = new GoogleGenerativeAI(apiKey);
+      // 올바른 Gemini 모델명 적용
       const model = genAI.getGenerativeModel({
-        model: 'gemini-3.5-flash-lite',
+        model: 'gemini-2.5-flash',
         generationConfig: { responseMimeType: 'application/json' }
       });
 
@@ -434,15 +288,5 @@ app.post('/api/analyze', async function (req, res) {
   }
 });
 
-process.on('uncaughtException', function (err) {
-  console.error('[Uncaught Exception]:', err.message);
-});
-
-process.on('unhandledRejection', function (reason) {
-  console.error('[Unhandled Rejection]:', reason);
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, function () {
-  console.log('Server listening on port ' + PORT);
-});
+// Vercel 서버리스 모듈 내보내기 (app.listen 삭제)
+export default app;
