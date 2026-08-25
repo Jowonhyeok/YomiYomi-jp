@@ -125,6 +125,18 @@ export default function App() {
   
   const isSignupFormValid = isPasswordLengthValid && isPasswordSpecialValid && isPasswordMatchValid && authName.trim().length > 0 && authEmail.trim().length > 0 && agreeTerms && agreePrivacy;
 
+  // 💥 서비스 사용 시각을 기록하는 헬퍼 함수 💥
+  const recordFeatureUsage = async () => {
+    if (currentUser && db && db.app) {
+      try {
+        const userDocRef = doc(db, 'users', currentUser.id);
+        await setDoc(userDocRef, { lastUsedAt: Date.now() }, { merge: true });
+      } catch (e) {
+        console.error("Failed to record usage", e);
+      }
+    }
+  };
+
   useEffect(() => {
     if (typeof document !== 'undefined') {
       document.documentElement.lang = lang;
@@ -168,6 +180,13 @@ export default function App() {
 
           const verifyData = await verifyRes.json();
           if (verifyData.success) {
+            
+            // 💥 모바일 리다이렉트 결제 성공 시각 기록 💥
+            if (db && db.app) {
+              const userDocRef = doc(db, 'users', user.uid);
+              await setDoc(userDocRef, { lastPaymentAt: Date.now() }, { merge: true });
+            }
+
             showAlert(`🎉 ${planName} 결제 및 승인이 완료되었습니다!`);
             sessionStorage.removeItem('pendingPlanName');
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -567,6 +586,12 @@ export default function App() {
         return;
       }
 
+      // 💥 PC 팝업 결제 성공 시각 기록 💥
+      if (db && db.app) {
+        const userDocRef = doc(db, 'users', currentUser.id);
+        await setDoc(userDocRef, { lastPaymentAt: Date.now() }, { merge: true });
+      }
+
       setCurrentUser((prev) => prev ? {
         ...prev,
         isSubscribed: true,
@@ -695,6 +720,10 @@ export default function App() {
       const imagePayload = selectedImage ? { mimeType: selectedImage.mimeType, data: selectedImage.data } : undefined;
       const result = await analyzeJapanese(inputText, lang, imagePayload);
       setAnalysisResult(result);
+      
+      // 💥 서비스 사용 시각 기록 (분석 성공 시)
+      recordFeatureUsage();
+
     } catch (error: any) {
       if (error.message === "DAILY_LIMIT_EXCEEDED") {
         showAlert(t('dailyLimitReached'));
@@ -841,13 +870,15 @@ export default function App() {
     setDeleteModalState({ isOpen: false, deckId: '', deckName: '', inputName: '' });
   };
 
-  // ★ 충돌 없는 완벽한 순수 txt 기반의 Anki 내보내기 로직 ★
   const handleExportAnki = () => {
     const currentDeck = decks.find(d => String(d.id) === String(selectedDeckId));
     if (!currentDeck || !currentDeck.cards || currentDeck.cards.length === 0) {
       showAlert(t('noSavedWords'));
       return;
     }
+
+    // 💥 서비스 사용 시각 기록 (내보내기)
+    recordFeatureUsage();
 
     let ankiContent = '#separator:tab\n#html:true\n#tags:YomiYomi Anki\n';
     currentDeck.cards.forEach(c => {
@@ -880,6 +911,9 @@ export default function App() {
       showAlert(t('noSavedWords'));
       return;
     }
+
+    // 💥 서비스 사용 시각 기록 (시험지 인쇄)
+    recordFeatureUsage();
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -955,6 +989,9 @@ export default function App() {
       showAlert(t('quizMinCardsAlert'));
       return;
     }
+
+    // 💥 서비스 사용 시각 기록 (퀴즈 시작)
+    recordFeatureUsage();
 
     const shuffledCards = [...allCards].sort(() => Math.random() - 0.5);
     setupQuizQuestion(shuffledCards, 0, 0);
