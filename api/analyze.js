@@ -12,13 +12,9 @@ if (!getApps().length) {
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     try {
       let rawKey = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
-      
-      // 양끝 따옴표가 포함되어 들어온 경우 제거
       if ((rawKey.startsWith('"') && rawKey.endsWith('"')) || (rawKey.startsWith("'") && rawKey.endsWith("'"))) {
         rawKey = rawKey.slice(1, -1);
       }
-      
-      // Vercel 환경변수의 이스케이프 개행문자(\n) 복원 후 JSON 파싱
       serviceAccount = JSON.parse(rawKey.replace(/\\n/g, '\n'));
     } catch (e) {
       console.error('[Firebase Key Parse Error]:', e.message);
@@ -28,7 +24,6 @@ if (!getApps().length) {
   if (serviceAccount && serviceAccount.project_id) {
     initializeApp({ credential: cert(serviceAccount) });
   } else {
-    // 환경변수 파싱 실패 시 기본 Project ID로 연결
     initializeApp({
       projectId: process.env.VITE_FIREBASE_PROJECT_ID || 'yomiyomi-jp'
     });
@@ -42,12 +37,10 @@ const auth = getAuth();
 // [Vercel Serverless Handler]
 // ----------------------------------------------------------------
 export default async function handler(req, res) {
-  // HTTP Method 검증
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED', message: 'POST 요청만 허용됩니다.' });
   }
 
-  // Authorization 토큰 검증
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'UNAUTHORIZED', message: '로그인이 필요합니다.' });
@@ -82,7 +75,6 @@ export default async function handler(req, res) {
     const today = new Date().toISOString().split('T')[0];
     let dailyCount = userData.lastAnalyzeDate === today ? (userData.dailyAnalyzeCount || 0) : 0;
 
-    // 일일 한도 검증 (무료 3회 / 프리미엄 FUP 300회)
     if (!isSubscribed && dailyCount >= 3) {
       return res.status(429).json({ error: 'DAILY_LIMIT_EXCEEDED', message: '오늘의 무료 분석 횟수(3회)를 모두 사용하셨습니다.' });
     } else if (isSubscribed && dailyCount >= 300) {
@@ -128,7 +120,6 @@ export default async function handler(req, res) {
     let cleanedJsonText = rawText.split('```json').join('').split('```').join('').trim();
     const parsedData = JSON.parse(cleanedJsonText);
 
-    // 사용량 기록
     await userDocRef.set({ dailyAnalyzeCount: dailyCount + 1, lastAnalyzeDate: today }, { merge: true });
 
     return res.status(200).json(parsedData);
