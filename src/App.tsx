@@ -50,9 +50,10 @@ declare global {
 }
 
 // 비로그인 상태 및 초기 신규 사용자용 디폴트 덱 정의
+// src/App.tsx 상단 49번째 줄 근처
 const DEFAULT_DECK_DATA: Deck = {
   id: 'default',
-  name: 'Default Deck (N5 基礎単語)',
+  name: 'Default Deck', // <--- 기존 'Default Deck (N5 基礎単語)'에서 깔끔하게 수정
   cards: [
     {
       id: 'default-card-1',
