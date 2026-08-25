@@ -1,4 +1,8 @@
+# 보안 비공개 키 (Firebase / Google Credentials)
+api/serviceAccountKey.json
 server/serviceAccountKey.json
+serviceAccountKey.json
+
 # Logs
 logs
 *.log
@@ -8,6 +12,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies & Build
 node_modules
 dist
 dist-ssr
