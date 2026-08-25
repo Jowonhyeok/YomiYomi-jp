@@ -12,7 +12,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 // @ts-ignore
-import { Package } from 'yomichan-anki-exporter';
+import AnkiExport from 'anki-apkg-export/dist/index.js';
 import { auth, googleProvider, db } from './firebase';
 
 import type { Lang, KanjiInfo, WordInfo, GrammarInfo, AnalysisResult, Deck, UserProfile } from './types';
@@ -846,11 +846,10 @@ export default function App() {
     }
 
     try {
-      // 1. Anki 패키지 및 덱 생성
-      const pkg = new Package();
-      const deck = pkg.addDeck(currentDeck.name);
+      // 1. Anki 덱 생성
+      const apkg = new AnkiExport(currentDeck.name);
 
-      // 2. 단어 카드를 덱에 추가
+      // 2. 단어 카드를 Anki 덱에 추가
       currentDeck.cards.forEach(c => {
         const posText = getLocalizedPOS(c.partOfSpeech, lang);
         const meaningText = getLocalizedText(c.meaning, lang);
@@ -858,13 +857,14 @@ export default function App() {
         const front = `${c.word} <br><small style="color:#e11d48;">[${c.reading}]</small>`;
         const back = `${meaningText} <br><small style="color:#64748b;">(${posText} ${c.jlpt ? '• ' + c.jlpt : ''})</small>`;
 
-        deck.addCard(front, back);
+        apkg.addCard(front, back);
       });
 
-      // 3. .apkg 바이너리(Blob) 데이터 생성
-      const blob = await pkg.writeToFile();
+      // 3. .apkg 압축 바이너리 데이터 생성
+      const zipZip = await apkg.save();
 
-      // 4. .apkg 파일 다운로드 실행
+      // 4. .apkg 확장자로 파일 다운로드 실행
+      const blob = new Blob([zipZip], { type: 'application/apkg' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -2149,7 +2149,7 @@ export default function App() {
                             <>[必填] 我同意自动续费及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消订阅政策</button>。</>
                           )}
                           {lang === 'zh-TW' && (
-                            <>[必填] 我同意自動續費及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消訂閱政策</button>。</>
+                            <>[必填] 我同意自動續費及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款และ取消訂閱政策</button>。</>
                           )}
                           {lang === 'ja' && (
                             <>[必須] 自動更新および<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">返金・解約ポリシー</button>に同意します。</>
