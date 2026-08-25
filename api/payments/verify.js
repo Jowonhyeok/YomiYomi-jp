@@ -68,6 +68,7 @@ export default async function handler(req, res) {
     else if (pName.includes('1년') || pName.includes('Year') || pName.includes('1y')) addDays = 365;
 
     const now = new Date();
+    const nowTimestamp = now.getTime(); // 환불 판정을 위한 밀리초 단위 timestamp
     let baseDate = now;
 
     const documentName = `projects/${projectId}/databases/(default)/documents/users/${userId}`;
@@ -92,21 +93,31 @@ export default async function handler(req, res) {
     const newEndDateObj = new Date(baseDate.getTime() + addDays * 24 * 60 * 60 * 1000);
     const formattedEndDate = newEndDateObj.toISOString().split('T')[0];
 
-    // 4. Firestore DB 업데이트 💥 (name 필드 추가로 400 에러 원천 차단)
-    const patchRes = await fetch(`https://firestore.googleapis.com/v1/${documentName}?updateMask.fieldPaths=isSubscribed&updateMask.fieldPaths=subscriptionPlan&updateMask.fieldPaths=subscriptionEndDate&updateMask.fieldPaths=lastPaymentId&updateMask.fieldPaths=lastPaymentDate&updateMask.fieldPaths=cancelAtPeriodEnd`, {
+    // 4. Firestore DB 업데이트 (lastPaymentId, lastPaymentAt 추가 반영)
+    const patchUrl = `https://firestore.googleapis.com/v1/${documentName}?` +
+      `updateMask.fieldPaths=isSubscribed&` +
+      `updateMask.fieldPaths=subscriptionPlan&` +
+      `updateMask.fieldPaths=subscriptionEndDate&` +
+      `updateMask.fieldPaths=lastPaymentId&` +
+      `updateMask.fieldPaths=lastPaymentDate&` +
+      `updateMask.fieldPaths=lastPaymentAt&` +
+      `updateMask.fieldPaths=cancelAtPeriodEnd`;
+
+    const patchRes = await fetch(patchUrl, {
       method: 'PATCH',
       headers: { 
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${idToken}` 
       },
       body: JSON.stringify({
-        name: documentName,  // <--- 이 속성이 빠져서 발생했던 에러입니다!
+        name: documentName,
         fields: {
           isSubscribed: { booleanValue: true },
           subscriptionPlan: { stringValue: pName },
           subscriptionEndDate: { stringValue: formattedEndDate },
           lastPaymentId: { stringValue: String(paymentId) },
           lastPaymentDate: { stringValue: now.toISOString() },
+          lastPaymentAt: { integerValue: String(nowTimestamp) }, // 환불 시 시각 대조용 timestamp
           cancelAtPeriodEnd: { booleanValue: false }
         }
       })
@@ -115,7 +126,7 @@ export default async function handler(req, res) {
     if (!patchRes.ok) {
       const errText = await patchRes.text();
       console.error('[Firestore Update Failed Detail]:', errText);
-      throw new Error(errText); // Vercel 서버 로그에 정확한 실패 원인 기록
+      throw new Error(errText);
     }
 
     return res.status(200).json({ success: true, message: '결제 검증 및 프리미엄 승인이 완료되었습니다.' });
