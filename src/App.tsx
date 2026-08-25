@@ -511,7 +511,7 @@ export default function App() {
     });
   };
 
-  // 💥 결제 수단별 파라미터 분기 처리 💥
+  // 💥 결제 수단별 파라미터 분기 및 products 구조 정제 💥
   const handlePortOnePayment = async (planName: string, priceAmount: number, channelKey: string, providerType: 'eximbay_card' | 'eximbay_alipay' | 'kakaopay') => {
     if (!agreePayPolicy) {
       showAlert(lang === 'ko' ? "결제 및 정기 자동 결제 약관에 동의해 주세요." : "Please agree to the payment policy terms.");
@@ -531,6 +531,7 @@ export default function App() {
 
     try {
       const paymentId = `pay-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const usdCents = Math.round(priceAmount * 100);
       
       const paymentRequest: any = {
         storeId: PORTONE_STORE_ID,
@@ -549,27 +550,23 @@ export default function App() {
         paymentRequest.totalAmount = await convertUsdToKrw(priceAmount);
         paymentRequest.payMethod = "EASY_PAY";
       } else if (providerType === 'eximbay_card') {
-        const usdCents = Math.round(priceAmount * 100);
         paymentRequest.currency = "CURRENCY_USD";
         paymentRequest.totalAmount = usdCents;
         paymentRequest.payMethod = "CARD";
         paymentRequest.products = [
           {
-            id: planName,
             name: `YomiYomi ${planName} Premium`,
             amount: usdCents,
             quantity: 1,
           }
         ];
       } else if (providerType === 'eximbay_alipay') {
-        const usdCents = Math.round(priceAmount * 100);
         paymentRequest.currency = "CURRENCY_USD";
         paymentRequest.totalAmount = usdCents;
         paymentRequest.payMethod = "EASY_PAY";
         paymentRequest.easyPay = { easyPayProvider: "ALIPAY" };
         paymentRequest.products = [
           {
-            id: planName,
             name: `YomiYomi ${planName} Premium`,
             amount: usdCents,
             quantity: 1,
