@@ -6,7 +6,7 @@ import fs from 'fs';
 if (!admin.apps.length) {
   let certConfig = null;
 
-  // 1순위: api/ 폴더 또는 프로젝트 내 serviceAccountKey.json 파일이 존재하는지 확인
+  // 1순위: 로컬 serviceAccountKey.json 파일 탐색
   const possiblePaths = [
     path.join(process.cwd(), 'api', 'serviceAccountKey.json'),
     path.join(process.cwd(), 'serviceAccountKey.json'),
@@ -24,7 +24,7 @@ if (!admin.apps.length) {
     }
   }
 
-  // 2순위: 로컬 파일이 없으면 Vercel에 설정된 FIREBASE_SERVICE_ACCOUNT 환경 변수 사용
+  // 2순위: Vercel 환경 변수 (FIREBASE_SERVICE_ACCOUNT) 파싱
   if (!certConfig && process.env.FIREBASE_SERVICE_ACCOUNT) {
     try {
       certConfig = typeof process.env.FIREBASE_SERVICE_ACCOUNT === 'string'
@@ -35,17 +35,24 @@ if (!admin.apps.length) {
     }
   }
 
-  // 3순위: 개별 환경 변수가 있을 때
+  // 3순위: 개별 환경 변수 파싱
   if (!certConfig && process.env.FIREBASE_PROJECT_ID) {
     certConfig = {
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      privateKey: process.env.FIREBASE_PRIVATE_KEY,
     };
   }
 
   if (!certConfig) {
-    throw new Error('Firebase Admin 인증 설정을 찾을 수 없습니다. (json 파일 또는 환경 변수 확인 필요)');
+    throw new Error('Firebase Admin 인증 설정을 찾을 수 없습니다.');
+  }
+
+  // 💥 핵심: Vercel 환경 변수의 줄바꿈(\\n) 파싱 오류 강제 정제 💥
+  if (certConfig.private_key) {
+    certConfig.private_key = certConfig.private_key.replace(/\\n/g, '\n');
+  } else if (certConfig.privateKey) {
+    certConfig.privateKey = certConfig.privateKey.replace(/\\n/g, '\n');
   }
 
   admin.initializeApp({
@@ -66,9 +73,11 @@ export default async function handler(req, res) {
       return res.status(401).json({ success: false, message: 'Unauthorized: No token provided' });
     }
 
+    // 1. 프론트엔드에서 넘어온 ID Token 검증
     const decodedToken = await admin.auth().verifyIdToken(token);
     const uid = decodedToken.uid;
 
+    // 2. DB 유저 정보 조회
     const db = admin.firestore();
     const userRef = db.collection('users').doc(uid);
     const userSnap = await userRef.get();
@@ -79,13 +88,14 @@ export default async function handler(req, res) {
 
     const userData = userSnap.data();
 
-    // 결제 시간과 사용 시간 비교
+    // 3. 결제 시각 vs 마지막 서비스 사용 시각 비교
     const lastPaymentAt = userData.lastPaymentAt || 0;
     const lastUsedAt = userData.lastUsedAt || 0;
 
     const isUsedAfterPayment = lastUsedAt > lastPaymentAt;
 
     if (isUsedAfterPayment) {
+      // 🚨 결제 이후 사용 기록 존재 -> 환불 불가능 및 구독 해지 예약 처리
       await userRef.update({ cancelAtPeriodEnd: true });
       return res.status(200).json({ 
         success: false, 
@@ -94,7 +104,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // 환불 승인 시 DB 롤백
+    // 4. 결제 후 사용 안 함 -> 전액 환불 승인 (DB 롤백)
     await userRef.update({
       isSubscribed: false,
       subscriptionPlan: 'Free',
