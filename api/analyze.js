@@ -17,7 +17,7 @@ export default async function handler(req, res) {
 
   let uid = null;
 
-  // 2. Firebase Auth REST API로 토큰 검증 (firebase-admin 미사용)
+  // 2. Firebase Auth REST API로 토큰 검증
   try {
     const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`, {
       method: 'POST',
@@ -77,13 +77,13 @@ export default async function handler(req, res) {
       return res.status(429).json({ error: 'FUP_LIMIT_EXCEEDED', message: '일일 최대 분석 제공량을 초과했습니다. 내일 다시 이용해 주세요.' });
     }
 
-    // 4. Gemini AI 분석 실행
+    // 4. Gemini AI 분석 실행 (gemini-3.5-flash-lite 적용)
     const apiKey = process.env.GEMINI_API_KEY || '';
     if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash-lite',
       generationConfig: { responseMimeType: 'application/json' }
     });
 
@@ -101,7 +101,7 @@ export default async function handler(req, res) {
 
     promptText += '\n[Required JSON Schema Example]:\n{\n' +
       '  "isJapanese": true,\n' +
-      '  "rubySentences": ["<ruby>私<rt>わたし</rt></ruby>は<ruby>学生<rt>がくせい</rt></ruby>입니다."],\n' +
+      '  "rubySentences": ["<ruby>私<rt>わたし</rt></ruby>は<ruby>学生<rt>がくせい</rt></ruby>です。"],\n' +
       '  "kanjiList": [{"kanji": "私", "readings": "わたし", "meaning": {"ko": "나", "en": "I, me", "zh-CN": "我", "zh-TW": "我", "ja": "わたし"}}],\n' +
       '  "wordList": [{"word": "学生", "reading": "がくせい", "partOfSpeech": "명사", "meaning": {"ko": "학생", "en": "student", "zh-CN": "학생", "zh-TW": "學生", "ja": "がくせい"}, "jlpt": "N5"}],\n' +
       '  "grammarList": [{"grammar": "です", "explanation": {"ko": "~입니다", "en": "is/am/are", "zh-CN": "是", "zh-TW": "是", "ja": "〜です"}}]\n' +
