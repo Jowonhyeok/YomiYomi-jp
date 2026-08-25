@@ -11,8 +11,6 @@ import {
   deleteUser
 } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
-// @ts-ignore
-import AnkiExport from 'anki-apkg-export/dist/index.js';
 import { auth, googleProvider, db } from './firebase';
 
 import type { Lang, KanjiInfo, WordInfo, GrammarInfo, AnalysisResult, Deck, UserProfile } from './types';
@@ -838,45 +836,31 @@ export default function App() {
     setDeleteModalState({ isOpen: false, deckId: '', deckName: '', inputName: '' });
   };
 
-  const handleExportAnki = async () => {
+  // ★ 충돌 없는 순수 txt 내보내기 롤백 ★
+  const handleExportAnki = () => {
     const currentDeck = decks.find(d => String(d.id) === String(selectedDeckId));
     if (!currentDeck || !currentDeck.cards || currentDeck.cards.length === 0) {
       showAlert(t('noSavedWords'));
       return;
     }
 
-    try {
-      // 1. Anki 덱 생성
-      const apkg = new AnkiExport(currentDeck.name);
+    let ankiContent = '#separator:tab\n#html:true\n#tags:YomiYomi Anki\n';
+    currentDeck.cards.forEach(c => {
+      const front = `${c.word} <br><small style="color:#e11d48;">[${c.reading}]</small>`;
+      const posText = getLocalizedPOS(c.partOfSpeech, lang);
+      const meaningText = getLocalizedText(c.meaning, lang);
+      const back = `${meaningText} <br><small style="color:#64748b;">(${posText} ${c.jlpt ? '• ' + c.jlpt : ''})</small>`;
+      ankiContent += `${front}\t${back}\n`;
+    });
 
-      // 2. 단어 카드를 Anki 덱에 추가
-      currentDeck.cards.forEach(c => {
-        const posText = getLocalizedPOS(c.partOfSpeech, lang);
-        const meaningText = getLocalizedText(c.meaning, lang);
-
-        const front = `${c.word} <br><small style="color:#e11d48;">[${c.reading}]</small>`;
-        const back = `${meaningText} <br><small style="color:#64748b;">(${posText} ${c.jlpt ? '• ' + c.jlpt : ''})</small>`;
-
-        apkg.addCard(front, back);
-      });
-
-      // 3. .apkg 압축 바이너리 데이터 생성
-      const zipZip = await apkg.save();
-
-      // 4. .apkg 확장자로 파일 다운로드 실행
-      const blob = new Blob([zipZip], { type: 'application/apkg' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${currentDeck.name}_Anki_Deck.apkg`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (err: any) {
-      console.error("Anki Export Error:", err);
-      showAlert("Failed to export Anki deck: " + (err.message || err));
-    }
+    const blob = new Blob([ankiContent], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${currentDeck.name}_Anki.txt`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handlePrintTestSheet = () => {
