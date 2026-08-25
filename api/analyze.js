@@ -1,33 +1,48 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// 1. Firebase Admin SDK 안전 초기화
+// ----------------------------------------------------------------
+// [Firebase Admin SDK 안전 초기화]
+// ----------------------------------------------------------------
 if (!getApps().length) {
   let serviceAccount = null;
+
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     try {
-      const rawEnv = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
-      serviceAccount = JSON.parse(rawEnv.replace(/\\n/g, '\n'));
+      let rawKey = process.env.FIREBASE_SERVICE_ACCOUNT.trim();
+      
+      // 양끝 따옴표가 포함되어 들어온 경우 제거
+      if ((rawKey.startsWith('"') && rawKey.endsWith('"')) || (rawKey.startsWith("'") && rawKey.endsWith("'"))) {
+        rawKey = rawKey.slice(1, -1);
+      }
+      
+      // Vercel 환경변수의 이스케이프 개행문자(\n) 복원 후 JSON 파싱
+      serviceAccount = JSON.parse(rawKey.replace(/\\n/g, '\n'));
     } catch (e) {
-      console.error('FIREBASE_SERVICE_ACCOUNT Parse Error:', e.message);
+      console.error('[Firebase Key Parse Error]:', e.message);
     }
   }
 
-  if (serviceAccount) {
+  if (serviceAccount && serviceAccount.project_id) {
     initializeApp({ credential: cert(serviceAccount) });
   } else {
-    initializeApp({ projectId: process.env.VITE_FIREBASE_PROJECT_ID });
+    // 환경변수 파싱 실패 시 기본 Project ID로 연결
+    initializeApp({
+      projectId: process.env.VITE_FIREBASE_PROJECT_ID || 'yomiyomi-jp'
+    });
   }
 }
 
 const db = getFirestore();
 const auth = getAuth();
 
-// 2. Vercel Serverless Handler
+// ----------------------------------------------------------------
+// [Vercel Serverless Handler]
+// ----------------------------------------------------------------
 export default async function handler(req, res) {
-  // CORS 및 HTTP Method 체크
+  // HTTP Method 검증
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED', message: 'POST 요청만 허용됩니다.' });
   }
@@ -67,9 +82,11 @@ export default async function handler(req, res) {
     const today = new Date().toISOString().split('T')[0];
     let dailyCount = userData.lastAnalyzeDate === today ? (userData.dailyAnalyzeCount || 0) : 0;
 
-    // 일일 제한 검증
+    // 일일 한도 검증 (무료 3회 / 프리미엄 FUP 300회)
     if (!isSubscribed && dailyCount >= 3) {
       return res.status(429).json({ error: 'DAILY_LIMIT_EXCEEDED', message: '오늘의 무료 분석 횟수(3회)를 모두 사용하셨습니다.' });
+    } else if (isSubscribed && dailyCount >= 300) {
+      return res.status(429).json({ error: 'FUP_LIMIT_EXCEEDED', message: '일일 최대 분석 제공량을 초과했습니다. 내일 다시 이용해 주세요.' });
     }
 
     const apiKey = process.env.GEMINI_API_KEY || '';
@@ -88,7 +105,7 @@ export default async function handler(req, res) {
     else if (targetLang === "ja") langGuide = "Japanese (日本語)";
 
     let promptText = 'You are a professional Japanese language tutor. Analyze the following Japanese input and respond strictly in valid JSON format.\n';
-    promptText += 'CRITICAL LANGUAGE REQUIREMENT: All "meaning" and "explanation" values inside the JSON MUST contain translations for the target language: "' + targetLang + '" (' + langGuide + ').\n\n';
+    promptText += 'CRITICAL LANGUAGE REQUIREMENT: All "meaning" and "explanation" values inside the JSON MUST contain translations for the target language: "' + targetLang + '" (' + langGuide + '). Ensure "zh-CN" and "zh-TW" are both accurately populated with Simplified and Traditional Chinese respectively.\n\n';
 
     if (text) promptText += '[Input Text]: "' + text + '"\n';
     if (imageBase64) promptText += '[Instruction]: Extract and analyze the Japanese text from the attached image.\n';
@@ -111,13 +128,13 @@ export default async function handler(req, res) {
     let cleanedJsonText = rawText.split('```json').join('').split('```').join('').trim();
     const parsedData = JSON.parse(cleanedJsonText);
 
-    // 사용량 갱신
+    // 사용량 기록
     await userDocRef.set({ dailyAnalyzeCount: dailyCount + 1, lastAnalyzeDate: today }, { merge: true });
 
     return res.status(200).json(parsedData);
 
   } catch (err) {
-    console.error('[Analyze Error]:', err.message || err);
+    console.error('[Analyze Error Detail]:', err.message || err);
     return res.status(500).json({ error: 'INTERNAL_SERVER_ERROR', message: err.message || '서버 오류가 발생했습니다.' });
   }
 }
