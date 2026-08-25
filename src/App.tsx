@@ -511,7 +511,7 @@ export default function App() {
     });
   };
 
-  // 💥 포트원 V2 / Eximbay 직접 우회 주입 (bypass) 적용 💥
+  // 💥 Eximbay의 엄격한 String 타입 검증 반영 💥
   const handlePortOnePayment = async (planName: string, priceAmount: number, channelKey: string, providerType: 'eximbay_card' | 'eximbay_alipay' | 'kakaopay') => {
     if (!agreePayPolicy) {
       showAlert(lang === 'ko' ? "결제 및 정기 자동 결제 약관에 동의해 주세요." : "Please agree to the payment policy terms.");
@@ -570,12 +570,13 @@ export default function App() {
           }
         ];
 
-        // 🔥 X055 방지: Eximbay 전용 우회(Bypass) 파라미터 강제 삽입 🔥
+        // 💥 핵심: 엑심베이(Eximbay)가 요구하는 문자열(String) 형태의 product 객체 우회주입 💥
         const bypassProduct = [
           {
             name: `YomiYomi ${planName} Premium`,
             quantity: "1",
-            unitPrice: String(usdCents), // Eximbay는 단가를 선호
+            amount: String(usdCents),
+            unitPrice: String(usdCents),
             link: window.location.origin
           }
         ];
