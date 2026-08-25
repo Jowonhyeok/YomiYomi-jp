@@ -1,9 +1,18 @@
 export type Lang = 'en' | 'ko' | 'zh-CN' | 'zh-TW' | 'ja';
 
+// 💥 helpers.ts에서 사용하는 다국어 텍스트 타입 추가
+export type MultilingualText = Record<string, string> | string;
+
+// 💥 helpers.ts에서 사용하는 요미가나 파싱 토큰 타입 추가
+export interface RubyToken {
+  text: string;
+  reading?: string;
+}
+
 export interface KanjiInfo {
   kanji: string;
   readings: string;
-  meaning: string;
+  meaning: MultilingualText;
 }
 
 export interface WordInfo {
@@ -11,16 +20,16 @@ export interface WordInfo {
   word: string;
   reading: string;
   partOfSpeech: string;
-  meaning: string;
+  meaning: MultilingualText;
   jlpt?: string;
 }
 
 export interface GrammarInfo {
   grammar: string;
-  explanation: string;
+  explanation: MultilingualText;
 }
 
-// 💥 에러의 원인이었던 translatedText가 추가되었습니다!
+// 에러의 원인이었던 translatedText가 포함된 분석 결과 인터페이스
 export interface AnalysisResult {
   isJapanese: boolean;
   translatedText?: string; 
