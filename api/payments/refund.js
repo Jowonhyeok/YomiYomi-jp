@@ -10,11 +10,11 @@ function getAdminApp() {
 
   let certConfig = null;
 
-  // 1. require를 통한 serviceAccountKey.json 파일 로드
+  // 1. require를 통한 serviceAccountKey.json 직접 로드
   try {
     certConfig = require('../serviceAccountKey.json');
   } catch (e) {
-    // 로컬 파일 누락 시 환경변수로 폴백
+    // 파일이 없을 경우 환경변수로 폴백
   }
 
   // 2. Vercel 환경 변수(FIREBASE_SERVICE_ACCOUNT) 로드
@@ -35,7 +35,7 @@ function getAdminApp() {
     throw new Error('Firebase 서비스 계정 키를 찾을 수 없습니다.');
   }
 
-  // private_key 줄바꿈(\\n) 정제
+  // private_key 개행문자(\n) 복원
   if (certConfig.private_key) {
     certConfig.private_key = certConfig.private_key.replace(/\\n/g, '\n');
   }
@@ -51,7 +51,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 💥 핵심: 생성된 adminApp 인스턴스로 auth와 firestore를 직접 호출
     const app = getAdminApp();
     const auth = admin.auth(app);
     const db = admin.firestore(app);
@@ -63,9 +62,19 @@ export default async function handler(req, res) {
       return res.status(401).json({ success: false, message: 'Unauthorized: No token provided' });
     }
 
-    const decodedToken = await auth.verifyIdToken(token);
-    const uid = decodedToken.uid;
+    let decodedToken;
+    try {
+      decodedToken = await auth.verifyIdToken(token);
+    } catch (verifyErr) {
+      // 인증 실패 시 두 프로젝트 ID 대조 정보를 클라이언트로 전송
+      const backendProjectId = app.options.credential?.projectId || 'UNKNOWN';
+      return res.status(401).json({
+        success: false,
+        message: `[인증 불일치 분석] 백엔드 설정 프로젝트: '${backendProjectId}' / 구글 검증 에러 상세: ${verifyErr.message}`
+      });
+    }
 
+    const uid = decodedToken.uid;
     const userRef = db.collection('users').doc(uid);
     const userSnap = await userRef.get();
 
