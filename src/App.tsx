@@ -775,7 +775,7 @@ export default function App() {
       } else {
         setErrorMessage(`⚠️ ${error.message || 'An error occurred during analysis.'}`);
       }
-    } fontally {
+    } finally {
       setIsAnalyzing(false);
       setTimeout(() => {
         setIsCoolingDown(false);
