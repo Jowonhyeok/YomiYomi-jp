@@ -56,13 +56,13 @@ const DEFAULT_DECK_DATA: Deck = {
   createdAt: new Date().toISOString()
 };
 
-// 🌸 헤더 상단 언어 선택 옵션 🌸
+// 🌸 헤더 상단 언어 선택 옵션 (순서: 영어 -> 중국어(간체) -> 대만어(번체) -> 한국어 -> 일본어) 🌸
 const LANG_OPTIONS: { code: Lang; flagUrl: string; label: string }[] = [
-  { code: 'ko', flagUrl: 'https://flagcdn.com/kr.svg', label: '한국어' },
   { code: 'en', flagUrl: 'https://flagcdn.com/us.svg', label: 'English' },
-  { code: 'ja', flagUrl: 'https://flagcdn.com/jp.svg', label: '日本語' },
   { code: 'zh-CN', flagUrl: 'https://flagcdn.com/cn.svg', label: '简体中文' },
   { code: 'zh-TW', flagUrl: 'https://flagcdn.com/tw.svg', label: '繁體中文' },
+  { code: 'ko', flagUrl: 'https://flagcdn.com/kr.svg', label: '한국어' },
+  { code: 'ja', flagUrl: 'https://flagcdn.com/jp.svg', label: '日本語' },
 ];
 
 export default function App() {
@@ -93,16 +93,17 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLeftSidebarOpenMobile, setIsLeftSidebarOpenMobile] = useState(false);
 
-  // 🌸 브라우저 탭 파비콘(Favicon)을 벚꽃 이모지로 자동 동적 적용 🌸
+  // 🌸 브라우저 탭 파비콘(Favicon)을 벚꽃 이모지로 강제 적용 (기존 파비콘 제거 및 새로 생성) 🌸
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
-      if (!link) {
-        link = document.createElement('link');
-        link.rel = 'shortcut icon';
-        document.getElementsByTagName('head')[0].appendChild(link);
-      }
+      const existingFavicons = document.querySelectorAll("link[rel*='icon']");
+      existingFavicons.forEach(el => el.parentNode?.removeChild(el));
+
+      const link = document.createElement('link');
+      link.type = 'image/svg+xml';
+      link.rel = 'icon';
       link.href = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌸</text></svg>';
+      document.getElementsByTagName('head')[0].appendChild(link);
     }
   }, []);
 

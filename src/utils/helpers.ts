@@ -37,7 +37,7 @@ export function getLocalizedPOS(pos: string, lang: Lang): string {
   const rawPos = pos.trim();
 
   const posDict: Record<string, Record<Lang, string>> = {
-    '명사': { ko: '명사', en: 'Noun', 'zh-CN': '名词', 'zh-TW': '名詞', ja: '명사' },
+    '명사': { ko: '명사', en: 'Noun', 'zh-CN': '名词', 'zh-TW': '名詞', ja: '名詞' },
     '대명사': { ko: '대명사', en: 'Pronoun', 'zh-CN': '代词', 'zh-TW': '代詞', ja: '代名詞' },
     '동사': { ko: '동사', en: 'Verb', 'zh-CN': '动词', 'zh-TW': '動詞', ja: '動詞' },
     '형용사': { ko: '형용사', en: 'Adjective', 'zh-CN': '形容词', 'zh-TW': '形容詞', ja: '形容詞' },
@@ -202,7 +202,7 @@ export async function analyzeJapanese(text: string, targetLang: Lang, imageBase6
   
   return {
     isJapanese: Boolean(data.isJapanese),
-    translatedText: data.translatedText || '', // 💥 드디어 화면으로 넘어갑니다!
+    translatedText: data.translatedText || '',
     rubySentences: Array.isArray(data.rubySentences) ? data.rubySentences : [],
     kanjiList: Array.isArray(data.kanjiList) ? data.kanjiList : [],
     wordList: Array.isArray(data.wordList) ? data.wordList : [],
