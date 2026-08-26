@@ -511,7 +511,6 @@ export default function App() {
     });
   };
 
-  // 💥 Eximbay의 엄격한 String 타입 검증 반영 💥
   const handlePortOnePayment = async (planName: string, priceAmount: number, channelKey: string, providerType: 'eximbay_card' | 'eximbay_alipay' | 'kakaopay') => {
     if (!agreePayPolicy) {
       showAlert(lang === 'ko' ? "결제 및 정기 자동 결제 약관에 동의해 주세요." : "Please agree to the payment policy terms.");
@@ -560,7 +559,6 @@ export default function App() {
           paymentRequest.easyPay = { easyPayProvider: "ALIPAY" };
         }
 
-        // 포트원 표준 products 지원
         paymentRequest.products = [
           {
             id: `plan-${planName.replace(/\s+/g, '-').toLowerCase()}`,
@@ -570,7 +568,6 @@ export default function App() {
           }
         ];
 
-        // 💥 핵심: 엑심베이(Eximbay)가 요구하는 문자열(String) 형태의 product 객체 우회주입 💥
         const bypassProduct = [
           {
             name: `YomiYomi ${planName} Premium`,
@@ -778,7 +775,7 @@ export default function App() {
       } else {
         setErrorMessage(`⚠️ ${error.message || 'An error occurred during analysis.'}`);
       }
-    } finally {
+    } fontally {
       setIsAnalyzing(false);
       setTimeout(() => {
         setIsCoolingDown(false);
@@ -2208,7 +2205,7 @@ export default function App() {
                             <>[必填] 我同意自动续费及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消订阅政策</button>。</>
                           )}
                           {lang === 'zh-TW' && (
-                            <>[必填] 我同意自動續費及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款และ取消訂閱政策</button>。</>
+                            <>[必填] 我同意自動續費及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消訂閱政策</button>。</>
                           )}
                           {lang === 'ja' && (
                             <>[必須] 自動更新および<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">返金・解約ポリシー</button>に同意します。</>
@@ -2689,9 +2686,10 @@ export default function App() {
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
         }
 
+        /* 중국어 간체(zh-CN) 및 번체/대만어(zh-TW) 얇은 글씨(Regular 400) 적용 */
         html[lang="zh-CN"], html[lang="zh-TW"], html[lang="zh-CN"] *, html[lang="zh-TW"] * {
           font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Noto Sans SC", sans-serif !important;
-          font-weight: 700 !important;
+          font-weight: 400 !important;
           -webkit-font-smoothing: antialiased !important;
           -moz-osx-font-smoothing: grayscale !important;
         }
