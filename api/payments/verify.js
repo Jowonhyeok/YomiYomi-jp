@@ -1,3 +1,15 @@
+import admin from 'firebase-admin';
+
+// 🌸 Firebase Admin SDK 안전한 싱글톤 초기화 🌸
+if (!admin.apps.length) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '{}');
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+}
+
+const db = admin.firestore();
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'POST 요청만 허용됩니다.' });
@@ -9,25 +21,12 @@ export default async function handler(req, res) {
   }
 
   const idToken = authHeader.split('Bearer ')[1];
-  const firebaseApiKey = process.env.VITE_FIREBASE_API_KEY;
-  const projectId = process.env.VITE_FIREBASE_PROJECT_ID || 'yomiyomi-jp';
-
   let uid = null;
 
-  // 1. Firebase Auth 토큰 검증
+  // 1. Firebase Admin SDK로 idToken 검증 (가장 안전함)
   try {
-    const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken })
-    });
-
-    if (!verifyRes.ok) {
-      return res.status(401).json({ success: false, message: '유효하지 않은 인증 토큰입니다.' });
-    }
-
-    const verifyData = await verifyRes.json();
-    uid = verifyData.users?.[0]?.localId;
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    uid = decodedToken.uid;
   } catch (err) {
     return res.status(401).json({ success: false, message: '인증 검증 실패: ' + err.message });
   }
@@ -62,130 +61,41 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: '결제가 완료 상태(PAID)가 아닙니다.' });
     }
 
-    let addDays = 90; // 3개월 (기본)
+    // 3. 플랜별 기간 계산
+    let addDays = 90; // 3개월
     const pName = String(planName || '3개월');
     if (pName.includes('1년') || pName.includes('1 Year') || pName.includes('1y')) addDays = 365;
-    else if (pName.includes('평생') || pName.includes('Lifetime')) addDays = 36500; // 평생 이용권 (100년)
+    else if (pName.includes('평생') || pName.includes('Lifetime')) addDays = 36500; // 평생 이용권
 
     const now = new Date();
     const nowTimestamp = now.getTime();
     let baseDate = now;
 
-    const documentName = `projects/${projectId}/databases/(default)/documents/users/${userId}`;
+    // 4. Firestore DB 읽기 (Admin 최고 권한으로 접근)
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
 
-    // 🌸 3. Google OAuth 2.0 서비스 계정 토큰 발급 함수 (Firebase Admin 권한 획득) 🌸
-    async function getFirestoreAccessToken() {
-      const saKeyEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-      if (!saKeyEnv) return null;
-
-      try {
-        const sa = JSON.parse(saKeyEnv);
-        const header = { alg: 'RS256', typ: 'JWT' };
-        const nowSec = Math.floor(Date.now() / 1000);
-        const claim = {
-          iss: sa.client_email,
-          scope: 'https://www.googleapis.com/auth/datastore',
-          aud: 'https://oauth2.googleapis.com/token',
-          exp: nowSec + 3600,
-          iat: nowSec
-        };
-
-        // Node.js crypto 모듈 사용
-        const crypto = await import('crypto');
-        
-        function base64UrlEncode(str) {
-          return Buffer.from(str).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-        }
-
-        const encodedHeader = base64UrlEncode(JSON.stringify(header));
-        const encodedClaim = base64UrlEncode(JSON.stringify(claim));
-        const signInput = `${encodedHeader}.${encodedClaim}`;
-
-        const signer = crypto.createSign('RSA-SHA256');
-        signer.update(signInput);
-        const signature = signer.sign(sa.private_key, 'base64')
-          .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-
-        const jwt = `${signInput}.${signature}`;
-
-        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-            assertion: jwt
-          })
-        });
-
-        if (tokenRes.ok) {
-          const tokenData = await tokenRes.json();
-          return tokenData.access_token;
-        }
-      } catch (err) {
-        console.error('Service Account Token Error:', err.message);
+    if (userDoc.exists) {
+      const userData = userDoc.data();
+      if (userData.subscriptionEndDate) {
+        const existingEndDate = new Date(userData.subscriptionEndDate);
+        if (existingEndDate > now) baseDate = existingEndDate;
       }
-      return null;
-    }
-
-    // Admin 서비스 계정 토큰 획득 (실패 시 기존 idToken 사용)
-    const adminToken = await getFirestoreAccessToken();
-    const effectiveToken = adminToken || idToken;
-
-    // 4. 기존 사용자 구독 기한 읽기
-    try {
-      const userDocRes = await fetch(`https://firestore.googleapis.com/v1/${documentName}`, {
-        headers: { 'Authorization': `Bearer ${effectiveToken}` }
-      });
-      if (userDocRes.ok) {
-        const userDocJson = await userDocRes.json();
-        const existingEndDateStr = userDocJson.fields?.subscriptionEndDate?.stringValue;
-        if (existingEndDateStr) {
-          const existingEndDate = new Date(existingEndDateStr);
-          if (existingEndDate > now) baseDate = existingEndDate;
-        }
-      }
-    } catch (e) {
-      console.error('Firestore Read User Exception:', e.message);
     }
 
     const newEndDateObj = new Date(baseDate.getTime() + addDays * 24 * 60 * 60 * 1000);
     const formattedEndDate = newEndDateObj.toISOString().split('T')[0];
 
-    // 5. Firestore DB 업데이트 (Admin 권한으로 패치)
-    const patchUrl = `https://firestore.googleapis.com/v1/${documentName}?` +
-      `updateMask.fieldPaths=isSubscribed&` +
-      `updateMask.fieldPaths=subscriptionPlan&` +
-      `updateMask.fieldPaths=subscriptionEndDate&` +
-      `updateMask.fieldPaths=lastPaymentId&` +
-      `updateMask.fieldPaths=lastPaymentDate&` +
-      `updateMask.fieldPaths=lastPaymentAt&` +
-      `updateMask.fieldPaths=cancelAtPeriodEnd`;
-
-    const patchRes = await fetch(patchUrl, {
-      method: 'PATCH',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${effectiveToken}` 
-      },
-      body: JSON.stringify({
-        name: documentName,
-        fields: {
-          isSubscribed: { booleanValue: true },
-          subscriptionPlan: { stringValue: pName },
-          subscriptionEndDate: { stringValue: formattedEndDate },
-          lastPaymentId: { stringValue: String(paymentId) },
-          lastPaymentDate: { stringValue: now.toISOString() },
-          lastPaymentAt: { integerValue: String(nowTimestamp) },
-          cancelAtPeriodEnd: { booleanValue: false }
-        }
-      })
-    });
-
-    if (!patchRes.ok) {
-      const errText = await patchRes.text();
-      console.error('[Firestore Update Failed Detail]:', errText);
-      throw new Error(errText);
-    }
+    // 5. Firestore DB 업데이트 (Admin 권한이므로 보안 규칙 우회하여 100% 성공)
+    await userRef.set({
+      isSubscribed: true,
+      subscriptionPlan: pName,
+      subscriptionEndDate: formattedEndDate,
+      lastPaymentId: String(paymentId),
+      lastPaymentDate: now.toISOString(),
+      lastPaymentAt: nowTimestamp,
+      cancelAtPeriodEnd: false
+    }, { merge: true });
 
     return res.status(200).json({ success: true, message: '결제 검증 및 프리미엄 승인이 완료되었습니다.' });
 
