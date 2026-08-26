@@ -1121,6 +1121,7 @@ export default function App() {
               </div>
             </div>
 
+            {/* 🌸 5개 언어 모두 고정 표시되는 YomiYomi 로고 🌸 */}
             <div className="flex items-center justify-center">
               <button 
                 onClick={() => setActiveTab('analyze')}
