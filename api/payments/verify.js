@@ -1,18 +1,36 @@
 import admin from 'firebase-admin';
 
-// 🌸 Firebase Admin SDK 안전한 싱글톤 초기화 🌸
+// 🌸 파이어베이스 Admin SDK 안전한 초기화 🌸
 if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY || '{}');
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
+  try {
+    const rawKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    if (!rawKey) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY 환경변수가 설정되지 않았습니다.');
+    }
+
+    // 줄바꿈이나 이스케이프 문자가 포함된 키 값 안전하게 처리
+    const serviceAccount = typeof rawKey === 'string' ? JSON.parse(rawKey) : rawKey;
+    
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+  } catch (initErr) {
+    console.error('[Firebase Admin Init Error]:', initErr.message);
+  }
 }
 
-const db = admin.firestore();
+const db = admin.apps.length ? admin.firestore() : null;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, message: 'POST 요청만 허용됩니다.' });
+  }
+
+  if (!db) {
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Firebase Admin SDK 초기화 실패. Vercel 환경변수(FIREBASE_SERVICE_ACCOUNT_KEY)를 확인해 주세요.' 
+    });
   }
 
   const authHeader = req.headers.authorization;
@@ -23,7 +41,6 @@ export default async function handler(req, res) {
   const idToken = authHeader.split('Bearer ')[1];
   let uid = null;
 
-  // 1. Firebase Admin SDK로 idToken 검증 (가장 안전함)
   try {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     uid = decodedToken.uid;
@@ -43,7 +60,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ success: false, message: 'PORTONE_API_SECRET 환경변수가 설정되지 않았습니다.' });
     }
 
-    // 2. 포트원 결제내역 단건 조회 (위변조 검증)
+    // 포트원 결제내역 단건 조회 (위변조 검증)
     const portoneRes = await fetch(`https://api.portone.io/payments/${paymentId}`, {
       method: 'GET',
       headers: {
@@ -61,17 +78,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: '결제가 완료 상태(PAID)가 아닙니다.' });
     }
 
-    // 3. 플랜별 기간 계산
-    let addDays = 90; // 3개월
+    let addDays = 90;
     const pName = String(planName || '3개월');
     if (pName.includes('1년') || pName.includes('1 Year') || pName.includes('1y')) addDays = 365;
-    else if (pName.includes('평생') || pName.includes('Lifetime')) addDays = 36500; // 평생 이용권
+    else if (pName.includes('평생') || pName.includes('Lifetime')) addDays = 36500;
 
     const now = new Date();
     const nowTimestamp = now.getTime();
     let baseDate = now;
 
-    // 4. Firestore DB 읽기 (Admin 최고 권한으로 접근)
     const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
 
@@ -86,7 +101,7 @@ export default async function handler(req, res) {
     const newEndDateObj = new Date(baseDate.getTime() + addDays * 24 * 60 * 60 * 1000);
     const formattedEndDate = newEndDateObj.toISOString().split('T')[0];
 
-    // 5. Firestore DB 업데이트 (Admin 권한이므로 보안 규칙 우회하여 100% 성공)
+    // Admin 권한으로 Firestore DB 업데이트
     await userRef.set({
       isSubscribed: true,
       subscriptionPlan: pName,
