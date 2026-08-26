@@ -2751,11 +2751,10 @@ export default function App() {
           font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
         }
 
-        /* 중국어 간체(zh-CN) 및 번체/대만어(zh-TW) 얇은 글씨(Regular 400) 적용 (로고 제외) */
+        /* 중국어 간체(zh-CN) 및 번체/대만어(zh-TW) 폰트 패밀리 지정 */
         html[lang="zh-CN"] body *:not(.app-logo-text):not(.app-logo-text *),
         html[lang="zh-TW"] body *:not(.app-logo-text):not(.app-logo-text *) {
           font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Noto Sans SC", sans-serif !important;
-          font-weight: 400 !important;
           -webkit-font-smoothing: antialiased !important;
           -moz-osx-font-smoothing: grayscale !important;
         }
