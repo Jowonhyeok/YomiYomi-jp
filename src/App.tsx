@@ -6,6 +6,7 @@ import {
   signInWithPopup, 
   signOut, 
   onAuthStateChanged,
+  updateProfile,
   sendEmailVerification,
   deleteUser
 } from 'firebase/auth';
@@ -179,7 +180,7 @@ export default function App() {
         const userDocRef = doc(db, 'users', currentUser.id);
         await setDoc(userDocRef, { lastUsedAt: Date.now() }, { merge: true });
       } catch (e) {
-        // 보안 규칙에 의해 거부되더라도 예외 메시지 출력 방지
+        // 보안 규칙 무시
       }
     }
   };
@@ -461,10 +462,7 @@ export default function App() {
         }
 
         if (data && data.success) {
-          const successMsg = lang === 'ko'
-            ? "🎉 결제 후 7일 이내 및 미사용 건이 확인되어 결제 전액 환불(취소) 처리되었습니다."
-            : "🎉 Full refund processed successfully (Unused & within 7 days).";
-          showAlert(successMsg);
+          showAlert(data.message || "🎉 환불 처리가 완료되었습니다.");
           setCurrentUser(prev => prev ? { ...prev, isSubscribed: false, subscriptionPlan: 'Free' } : null);
         } else if (data && (data.code === 'USAGE_EXISTS' || data.code === 'EXCEEDED_7_DAYS')) {
           setCurrentUser(prev => prev ? { ...prev, cancelAtPeriodEnd: true } : null);
@@ -603,24 +601,24 @@ export default function App() {
         ];
 
         paymentRequest.bypass = {
-          eximbay_v2: {
-            product: bypassProduct
-          },
-          eximbay: {
-            product: bypassProduct
-          }
+          eximbay_v2: { product: bypassProduct },
+          eximbay: { product: bypassProduct }
         };
       }
 
       sessionStorage.setItem('pendingPlanName', planName);
 
+      // 🌸 포트원 결제창 호출 🌸
       const response = await window.PortOne.requestPayment(paymentRequest);
 
-      if (response && response.code != null) {
-        showAlert(`Payment failed: ${response.message || 'Cancelled or failed authorization.'}`);
+      // 🌸 [포트원 V2 결제 응답 수신 정돈] 🌸
+      // response가 명시적으로 존재하고 code 속성이 있을 때만 취소/실패 건 처리
+      if (response && response.code !== undefined) {
+        showAlert(`결제 취소/실패: ${response.message || '결제가 완료되지 않았습니다.'}`);
         return;
       }
 
+      // 백엔드 검증 API 호출
       const firebaseUser = auth.currentUser;
       const idToken = await firebaseUser?.getIdToken();
 
@@ -644,7 +642,7 @@ export default function App() {
         return;
       }
 
-      // 백엔드가 이미 DB 승인 처리를 다 하였으므로 프론트엔드 상태만 즉시 갱신합니다
+      // 상태 업데이트
       setCurrentUser((prev) => prev ? {
         ...prev,
         isSubscribed: true,
