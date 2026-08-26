@@ -80,6 +80,23 @@ export default function App() {
 
   const t = (key: string) => DICT[lang]?.[key] || DICT['en']?.[key] || DICT['ko']?.[key] || key;
 
+  // 🌸 언어별 회원가입 이메일 발송 안내 메시지 매핑 🌸
+  const getSignupEmailNotice = (userLang: Lang) => {
+    switch (userLang) {
+      case 'ko':
+        return '🌸 회원가입이 완료되었습니다!\n입력하신 이메일로 인증 링크를 발송했습니다. 이메일함(스팸함 포함)을 확인하여 인증 완료 후 로그인해 주세요.';
+      case 'ja':
+        return '🌸 会員登録が完了しました！\nご入力いただいたメールアドレスに確認リンクを送信しました。メールボックス（迷惑メールフォルダ含む）をご確認のうえ、認証を完了してからログインしてください。';
+      case 'zh-CN':
+        return '🌸 注册成功！\n验证链接已发送至您的邮箱。请检查您的收件箱（包括垃圾邮件箱），完成验证后再进行登录。';
+      case 'zh-TW':
+        return '🌸 註冊成功！\n驗證連結已發送至您的信箱。請檢查您的收件箱（包含垃圾郵件箱），完成驗證後再進行登入。';
+      case 'en':
+      default:
+        return '🌸 Sign-up completed successfully!\nA verification link has been sent to your email. Please check your inbox (including spam folder) and verify your account before logging in.';
+    }
+  };
+
   const [inputText, setInputText] = useState('');
   const [selectedImage, setSelectedImage] = useState<{ file: File; preview: string; mimeType: string; data: string } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -93,7 +110,7 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLeftSidebarOpenMobile, setIsLeftSidebarOpenMobile] = useState(false);
 
-  // 🌸 브라우저 탭 파비콘(Favicon)을 벚꽃 이모지로 강제 적용 (기존 파비콘 제거 및 새로 생성) 🌸
+  // 🌸 브라우저 탭 파비콘(Favicon)을 벚꽃 이모지로 강제 적용 🌸
   useEffect(() => {
     if (typeof document !== 'undefined') {
       const existingFavicons = document.querySelectorAll("link[rel*='icon']");
@@ -216,7 +233,6 @@ export default function App() {
 
           const verifyData = await verifyRes.json();
           if (verifyData.success) {
-            // 🌸 프론트엔드 중복 DB 수정 제거됨 (백엔드가 이미 처리 완료) 🌸
             showAlert(`🎉 ${planName} 결제 및 승인이 완료되었습니다!`);
             sessionStorage.removeItem('pendingPlanName');
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -372,7 +388,9 @@ export default function App() {
 
         await sendEmailVerification(userCredential.user);
         await signOut(auth);
-        showAlert(t('signupSuccess'));
+
+        // 🌸 다국어 적용된 이메일 발송 안내 알림창 🌸
+        showAlert(getSignupEmailNotice(lang));
       } else {
         const userCredential = await signInWithEmailAndPassword(auth, authEmail, authPassword);
         if (!userCredential.user.emailVerified) {
@@ -656,8 +674,6 @@ export default function App() {
         showAlert(`결제 검증 실패: ${verifyData.message || '검증에 실패했습니다.'}`);
         return;
       }
-
-      // 🌸 프론트엔드 중복 DB 수정 제거됨 (백엔드가 이미 처리 완료) 🌸
 
       setCurrentUser((prev) => prev ? {
         ...prev,
@@ -2292,7 +2308,7 @@ export default function App() {
                             <>[必填] 我同意支付條款及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消訂閱政策</button>。</>
                           )}
                           {lang === 'ja' && (
-                            <>[必須] 決済利用規約および<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">返金・解約ポリシー</button>に同意します。</>
+                            <>[必須] 決済利用規約および<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">返金・解約ポリシー</button>에 동의합니다.</>
                           )}
                         </span>
                       </label>
