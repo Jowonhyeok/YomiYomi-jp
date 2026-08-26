@@ -174,6 +174,7 @@ export default function App() {
     }
   }, [decks, selectedDeckId, setSelectedDeckId]);
 
+  // 🌐 언어 변경 시 전역 상태 및 DB 유저 프로필 자동 업데이트 🌐
   const handleLanguageChange = (newLang: Lang) => {
     setLang(newLang);
     if (currentUser && db && db.app) {
@@ -419,14 +420,14 @@ export default function App() {
     try {
       if (db && db.app) {
         const userDocRef = doc(db, 'users', currentUser.id);
-        await setDoc(userDocRef, { name: editName, lang: lang }, { merge: true });
+        await setDoc(userDocRef, { name: editName }, { merge: true });
       }
 
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, { displayName: editName });
       }
 
-      setCurrentUser(prev => prev ? { ...prev, name: editName, lang: lang } : null);
+      setCurrentUser(prev => prev ? { ...prev, name: editName } : null);
       setIsSettingsModalOpen(false);
       showAlert(t('profileUpdateSuccess'));
     } catch (err: any) {
@@ -1174,7 +1175,7 @@ export default function App() {
                 <span className="hidden sm:inline">{t('membership')}</span>
               </button>
 
-              {/* 🌐 로그인 여부와 무관하게 항상 표시되는 상단 언어 선택 드롭다운 🌐 */}
+              {/* 🌐 상단 통합 언어 선택 드롭다운 🌐 */}
               <div className="relative inline-block text-left" ref={headerLangRef}>
                 <button
                   type="button"
@@ -1210,15 +1211,17 @@ export default function App() {
 
               {currentUser ? (
                 <div className="flex items-center pl-1 border-l border-slate-200">
+                  {/* ⚙️ 아이콘 + 텍스트 버튼으로 변경 완료 */}
                   <button
                     onClick={() => {
                       setAuthEditName(currentUser.name || '');
                       setIsSettingsModalOpen(true);
                     }}
-                    className="p-1 text-slate-500 hover:text-slate-800 text-sm cursor-pointer"
-                    title="설정"
+                    className="flex items-center gap-1 px-2 py-1 text-slate-600 hover:text-rose-600 text-xs font-bold rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                    title={t('settingsTitle')}
                   >
-                    ⚙️
+                    <span>⚙️</span>
+                    <span className="hidden sm:inline">{t('settingsTitle')}</span>
                   </button>
 
                   <button
@@ -2593,6 +2596,7 @@ export default function App() {
         </div>
       )}
 
+      {/* ⚙️ 계정 및 프로필 설정 모달 (언어 중복 선택 버튼 제거 및 깔끔하게 다듬기) */}
       {isSettingsModalOpen && currentUser && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-xl border border-rose-100 relative">
@@ -2619,36 +2623,6 @@ export default function App() {
                   onChange={(e) => setAuthEditName(e.target.value)}
                   className="w-full text-xs p-2.5 border border-slate-200 rounded-xl outline-none focus:border-rose-400 bg-slate-50 font-medium"
                 />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-2">{t('changeLanguage')}</label>
-                <div className="flex justify-between items-center px-1">
-                  {[
-                    { code: 'en', flagUrl: 'https://flagcdn.com/us.svg', label: 'English' },
-                    { code: 'ko', flagUrl: 'https://flagcdn.com/kr.svg', label: '한국어' },
-                    { code: 'zh-CN', flagUrl: 'https://flagcdn.com/cn.svg', label: '简体' },
-                    { code: 'zh-TW', flagUrl: 'https://flagcdn.com/tw.svg', label: '繁體' },
-                    { code: 'ja', flagUrl: 'https://flagcdn.com/jp.svg', label: '日本語' },
-                  ].map((item) => (
-                    <div key={item.code} className="flex flex-col items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleLanguageChange(item.code as Lang)}
-                        className={`w-10 h-10 rounded-full flex items-center justify-center overflow-hidden transition shadow-xs border-2 cursor-pointer ${
-                          lang === item.code 
-                            ? 'border-rose-500 scale-110 ring-2 ring-rose-200' 
-                            : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
-                      >
-                        <img src={item.flagUrl} alt={item.label} className="w-full h-full object-cover" />
-                      </button>
-                      <span className={`text-[9px] font-bold ${lang === item.code ? 'text-rose-600' : 'text-slate-400'}`}>
-                        {item.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
               </div>
 
               <button
@@ -2743,7 +2717,10 @@ export default function App() {
 
       <style>{`
         :root {
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+          text-rendering: optimizeLegibility;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
         }
 
         /* 🌸 로고 폰트 고정 전용 스타일 (!important로 언어 변경 폰트 강제 적용 방지) 🌸 */
@@ -2751,12 +2728,10 @@ export default function App() {
           font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
         }
 
-        /* 중국어 간체(zh-CN) 및 번체/대만어(zh-TW) 폰트 패밀리 지정 */
+        /* 🇨🇳 중국어(간체/번체) 폰트 패밀리 지정 및 굵기 이슈 완벽 처리 */
         html[lang="zh-CN"] body *:not(.app-logo-text):not(.app-logo-text *),
         html[lang="zh-TW"] body *:not(.app-logo-text):not(.app-logo-text *) {
-          font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Noto Sans SC", sans-serif !important;
-          -webkit-font-smoothing: antialiased !important;
-          -moz-osx-font-smoothing: grayscale !important;
+          font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif !important;
         }
 
         .note-content-area, .note-content-area * {
