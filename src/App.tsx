@@ -811,7 +811,6 @@ export default function App() {
       } else {
         setErrorMessage(`⚠️ ${error.message || 'An error occurred during analysis.'}`);
       }
-    } font-weight: 400 !important;
     } finally {
       setIsAnalyzing(false);
       setTimeout(() => {
@@ -2125,7 +2124,7 @@ export default function App() {
         </p>
       </footer>
 
-      {/* 💳 결제 요금제 모달 (문구 정돈 완료) 💳 */}
+      {/* 💳 결제 요금제 모달 💳 */}
       {isPricingModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-rose-100 relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
