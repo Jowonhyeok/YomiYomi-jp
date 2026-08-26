@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   signInWithEmailAndPassword, 
@@ -56,6 +56,15 @@ const DEFAULT_DECK_DATA: Deck = {
   createdAt: new Date().toISOString()
 };
 
+// 🌸 헤더 상단 국기 드롭다운용 언어 목록 🌸
+const LANG_OPTIONS: { code: Lang; flagUrl: string; label: string }[] = [
+  { code: 'ko', flagUrl: 'https://flagcdn.com/kr.svg', label: '한국어' },
+  { code: 'en', flagUrl: 'https://flagcdn.com/us.svg', label: 'English' },
+  { code: 'ja', flagUrl: 'https://flagcdn.com/jp.svg', label: '日本語' },
+  { code: 'zh-CN', flagUrl: 'https://flagcdn.com/cn.svg', label: '简体中文' },
+  { code: 'zh-TW', flagUrl: 'https://flagcdn.com/tw.svg', label: '繁體中文' },
+];
+
 export default function App() {
   const { currentUser, lang, setCurrentUser, setLang } = useUserStore();
   const { 
@@ -83,6 +92,20 @@ export default function App() {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLeftSidebarOpenMobile, setIsLeftSidebarOpenMobile] = useState(false);
+
+  // 헤더 언어 드롭다운 팝오버 상태 및 외부클릭 감지
+  const [isHeaderLangOpen, setIsHeaderLangOpen] = useState(false);
+  const headerLangRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (headerLangRef.current && !headerLangRef.current.contains(e.target as Node)) {
+        setIsHeaderLangOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -1093,6 +1116,8 @@ export default function App() {
 
   const daysLeft = calculateDaysLeft(currentUser?.subscriptionEndDate);
 
+  const currentLangObj = LANG_OPTIONS.find(l => l.code === lang) || LANG_OPTIONS[0];
+
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-slate-800 font-sans border-t-4 border-rose-600 relative pb-20 flex flex-col justify-between">
       <div>
@@ -1148,6 +1173,40 @@ export default function App() {
                 <span>👑</span>
                 <span className="hidden sm:inline">{t('membership')}</span>
               </button>
+
+              {/* 🌐 로그인 여부와 무관하게 항상 표시되는 상단 언어 선택 드롭다운 🌐 */}
+              <div className="relative inline-block text-left" ref={headerLangRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsHeaderLangOpen(!isHeaderLangOpen)}
+                  className="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl flex items-center gap-1.5 text-xs font-bold text-slate-700 transition cursor-pointer shrink-0"
+                >
+                  <img src={currentLangObj.flagUrl} alt={currentLangObj.label} className="w-4 h-3 object-cover rounded-2xs" />
+                  <span className="hidden sm:inline text-[11px]">{currentLangObj.label}</span>
+                  <span className="text-[9px] text-slate-400">▾</span>
+                </button>
+
+                {isHeaderLangOpen && (
+                  <div className="absolute right-0 mt-1.5 w-32 bg-white border border-rose-100 rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 z-50 py-1">
+                    {LANG_OPTIONS.map((item) => (
+                      <button
+                        key={item.code}
+                        type="button"
+                        onClick={() => {
+                          handleLanguageChange(item.code);
+                          setIsHeaderLangOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-left hover:bg-rose-50 transition ${
+                          lang === item.code ? 'text-rose-600 bg-rose-50/50' : 'text-slate-700'
+                        }`}
+                      >
+                        <img src={item.flagUrl} alt={item.label} className="w-4 h-3 object-cover rounded-2xs" />
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {currentUser ? (
                 <div className="flex items-center pl-1 border-l border-slate-200">
