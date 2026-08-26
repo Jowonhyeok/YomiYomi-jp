@@ -93,6 +93,19 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLeftSidebarOpenMobile, setIsLeftSidebarOpenMobile] = useState(false);
 
+  // 🌸 브라우저 탭 파비콘(Favicon)을 벚꽃 이모지로 자동 동적 적용 🌸
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'shortcut icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌸</text></svg>';
+    }
+  }, []);
+
   // 헤더 언어 드롭다운
   const [isHeaderLangOpen, setIsHeaderLangOpen] = useState(false);
   const headerLangRef = useRef<HTMLDivElement>(null);
@@ -798,6 +811,7 @@ export default function App() {
       } else {
         setErrorMessage(`⚠️ ${error.message || 'An error occurred during analysis.'}`);
       }
+    } font-weight: 400 !important;
     } finally {
       setIsAnalyzing(false);
       setTimeout(() => {
@@ -2111,7 +2125,7 @@ export default function App() {
         </p>
       </footer>
 
-      {/* 💳 수정된 구독 및 결제 요금제 모달 (3개월 $12 / 1년 $38.40 / 평생 $45) 💳 */}
+      {/* 💳 결제 요금제 모달 (문구 정돈 완료) 💳 */}
       {isPricingModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-rose-100 relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
@@ -2184,7 +2198,7 @@ export default function App() {
                           </span>
                           <div className="text-base font-black text-slate-900 mb-1">$12.00 USD</div>
                           <span className="text-[10px] text-slate-400">
-                            {lang === 'ko' ? '월 $4.00 (약 1.6만원)' : '$4.00 / mo'}
+                            {lang === 'ko' ? '월 $4.00' : '$4.00 / mo'}
                           </span>
                         </div>
                         <button
@@ -2206,7 +2220,7 @@ export default function App() {
                           </span>
                           <div className="text-base font-black text-slate-900 mb-1">$38.40 USD</div>
                           <span className="text-[10px] text-amber-700 font-semibold">
-                            {lang === 'ko' ? '월 $3.20 (약 5.3만원)' : '$3.20 / mo'}
+                            {lang === 'ko' ? '월 $3.20' : '$3.20 / mo'}
                           </span>
                         </div>
                         <button
@@ -2228,7 +2242,7 @@ export default function App() {
                           </span>
                           <div className="text-base font-black text-rose-900 mb-1">$45.00 USD</div>
                           <span className="text-[10px] text-rose-600 font-bold">
-                            {lang === 'ko' ? '무제한 무기한 (약 6.2만원)' : 'Unlimited Access'}
+                            {lang === 'ko' ? '무제한' : 'Unlimited'}
                           </span>
                         </div>
                         <button
