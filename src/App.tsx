@@ -2125,7 +2125,7 @@ export default function App() {
         </p>
       </footer>
 
-      {/* 💳 결제 요금제 모달 💳 */}
+      {/* 💳 결제 요금제 모달 (다국어 constants 연동 완료) 💳 */}
       {isPricingModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-rose-100 relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
@@ -2194,15 +2194,15 @@ export default function App() {
                       <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition">
                         <div>
                           <span className="text-xs font-bold text-slate-500 block mb-1">
-                            {lang === 'ko' ? '3개월' : '3 Months'}
+                            {t('plan3m')}
                           </span>
-                          <div className="text-base font-black text-slate-900 mb-1">$12.00 USD</div>
+                          <div className="text-base font-black text-slate-900 mb-1">{t('price3m')} USD</div>
                           <span className="text-[10px] text-slate-400">
-                            {lang === 'ko' ? '월 $4.00' : '$4.00 / mo'}
+                            {t('perMonth3')}
                           </span>
                         </div>
                         <button
-                          onClick={() => setSelectedPlanForPay({ planName: lang === 'ko' ? '3개월' : '3 Months', priceAmount: 12.00 })}
+                          onClick={() => setSelectedPlanForPay({ planName: t('plan3m'), priceAmount: 12.00 })}
                           className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-2xs transition cursor-pointer"
                         >
                           {t('subscribePlan')}
@@ -2212,19 +2212,19 @@ export default function App() {
                       {/* 2. 1년 플랜 ($38.40) */}
                       <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition relative">
                         <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-                          20% OFF
+                          {t('off20')}
                         </span>
                         <div>
                           <span className="text-xs font-bold text-slate-500 block mb-1">
-                            {lang === 'ko' ? '1년 구독' : '1 Year'}
+                            {t('plan1y')}
                           </span>
-                          <div className="text-base font-black text-slate-900 mb-1">$38.40 USD</div>
+                          <div className="text-base font-black text-slate-900 mb-1">{t('price1y')} USD</div>
                           <span className="text-[10px] text-amber-700 font-semibold">
-                            {lang === 'ko' ? '월 $3.20' : '$3.20 / mo'}
+                            {t('perMonth12')}
                           </span>
                         </div>
                         <button
-                          onClick={() => setSelectedPlanForPay({ planName: lang === 'ko' ? '1년 구독' : '1 Year', priceAmount: 38.40 })}
+                          onClick={() => setSelectedPlanForPay({ planName: t('plan1y'), priceAmount: 38.40 })}
                           className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-2xs transition cursor-pointer"
                         >
                           {t('subscribePlan')}
@@ -2234,19 +2234,19 @@ export default function App() {
                       {/* 3. 평생 이용권 ($45.00) */}
                       <div className="p-4 bg-rose-50/80 border border-rose-300 rounded-2xl flex flex-col justify-between text-center relative shadow-xs">
                         <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-                          🔥 BEST
+                          {t('bestTag')}
                         </span>
                         <div>
                           <span className="text-xs font-bold text-rose-700 block mb-1">
-                            {lang === 'ko' ? '평생 이용권' : 'Lifetime Pass'}
+                            {t('planLifetime')}
                           </span>
-                          <div className="text-base font-black text-rose-900 mb-1">$45.00 USD</div>
+                          <div className="text-base font-black text-rose-900 mb-1">{t('priceLifetime')} USD</div>
                           <span className="text-[10px] text-rose-600 font-bold">
-                            {lang === 'ko' ? '무제한' : 'Unlimited'}
+                            {t('unlimitedText')}
                           </span>
                         </div>
                         <button
-                          onClick={() => setSelectedPlanForPay({ planName: lang === 'ko' ? '평생 이용권' : 'Lifetime Pass', priceAmount: 45.00 })}
+                          onClick={() => setSelectedPlanForPay({ planName: t('planLifetime'), priceAmount: 45.00 })}
                           className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-2xs transition cursor-pointer"
                         >
                           {t('subscribePlan')}
