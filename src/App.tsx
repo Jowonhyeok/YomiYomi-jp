@@ -6,7 +6,6 @@ import {
   signInWithPopup, 
   signOut, 
   onAuthStateChanged,
-  updateProfile,
   sendEmailVerification,
   deleteUser
 } from 'firebase/auth';
@@ -180,7 +179,7 @@ export default function App() {
         const userDocRef = doc(db, 'users', currentUser.id);
         await setDoc(userDocRef, { lastUsedAt: Date.now() }, { merge: true });
       } catch (e) {
-        // 보안 규칙 제한으로 에러 발생 시 무시
+        // 보안 규칙에 의해 거부되더라도 예외 메시지 출력 방지
       }
     }
   };
@@ -226,8 +225,8 @@ export default function App() {
           
           if (!verifyRes.ok) return;
 
-          const verifyData = await verifyRes.json();
-          if (verifyData.success) {
+          const verifyData = await verifyRes.json().catch(() => null);
+          if (verifyData && verifyData.success) {
             showAlert(`🎉 ${planName} 결제 및 승인이 완료되었습니다!`);
             sessionStorage.removeItem('pendingPlanName');
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -641,10 +640,11 @@ export default function App() {
       const verifyData = await verifyRes.json().catch(() => null);
 
       if (!verifyRes.ok || !verifyData || !verifyData.success) {
-        showAlert(`결제 검증 실패: ${verifyData?.message || '검증 과정에서 오류가 발생했습니다.'}`);
+        showAlert(`결제 검증 실패: ${verifyData?.message || '검증 처리 중 오류가 발생했습니다.'}`);
         return;
       }
 
+      // 백엔드가 이미 DB 승인 처리를 다 하였으므로 프론트엔드 상태만 즉시 갱신합니다
       setCurrentUser((prev) => prev ? {
         ...prev,
         isSubscribed: true,
