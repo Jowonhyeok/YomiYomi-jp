@@ -6,7 +6,6 @@ import {
   signInWithPopup, 
   signOut, 
   onAuthStateChanged,
-  updateProfile,
   sendEmailVerification,
   deleteUser
 } from 'firebase/auth';
@@ -56,7 +55,7 @@ const DEFAULT_DECK_DATA: Deck = {
   createdAt: new Date().toISOString()
 };
 
-// 🌸 헤더 상단 언어 선택 옵션 (순서: 영어 -> 중국어(간체) -> 대만어(번체) -> 한국어 -> 일본어) 🌸
+// 🌸 헤더 상단 언어 선택 옵션 🌸
 const LANG_OPTIONS: { code: Lang; flagUrl: string; label: string }[] = [
   { code: 'en', flagUrl: 'https://flagcdn.com/us.svg', label: 'English' },
   { code: 'zh-CN', flagUrl: 'https://flagcdn.com/cn.svg', label: '简体中文' },
@@ -110,7 +109,7 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLeftSidebarOpenMobile, setIsLeftSidebarOpenMobile] = useState(false);
 
-  // 🌸 브라우저 탭 파비콘(Favicon)을 벚꽃 이모지로 강제 적용 🌸
+  // 🌸 브라우저 탭 파비콘 적용 🌸
   useEffect(() => {
     if (typeof document !== 'undefined') {
       const existingFavicons = document.querySelectorAll("link[rel*='icon']");
@@ -161,7 +160,6 @@ export default function App() {
   };
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [editName, setAuthEditName] = useState('');
 
   const [isNewDeckModalOpen, setIsNewDeckModalOpen] = useState(false);
   const [newDeckInputName, setNewDeckInputName] = useState('');
@@ -389,7 +387,6 @@ export default function App() {
         await sendEmailVerification(userCredential.user);
         await signOut(auth);
 
-        // 🌸 다국어 적용된 이메일 발송 안내 알림창 🌸
         showAlert(getSignupEmailNotice(lang));
       } else {
         const userCredential = await signInWithEmailAndPassword(auth, authEmail, authPassword);
@@ -440,26 +437,6 @@ export default function App() {
         setIsSettingsModalOpen(false);
       }
     });
-  };
-
-  const handleSaveSettings = async () => {
-    if (!currentUser) return;
-    try {
-      if (db && db.app) {
-        const userDocRef = doc(db, 'users', currentUser.id);
-        await setDoc(userDocRef, { name: editName }, { merge: true });
-      }
-
-      if (auth.currentUser) {
-        await updateProfile(auth.currentUser, { displayName: editName });
-      }
-
-      setCurrentUser(prev => prev ? { ...prev, name: editName } : null);
-      setIsSettingsModalOpen(false);
-      showAlert(t('profileUpdateSuccess'));
-    } catch (err: any) {
-      showAlert('Failed to update profile: ' + err.message);
-    }
   };
 
   const handleCancelSubscription = () => {
@@ -1197,7 +1174,7 @@ export default function App() {
                 <span className="hidden sm:inline">{t('membership')}</span>
               </button>
 
-              {/* 🌐 상단 통합 언어 선택 드롭다운 (얇은 글씨체 적용) 🌐 */}
+              {/* 🌐 상단 통합 언어 선택 드롭다운 🌐 */}
               <div className="relative inline-block text-left" ref={headerLangRef}>
                 <button
                   type="button"
@@ -1234,10 +1211,7 @@ export default function App() {
               {currentUser ? (
                 <div className="flex items-center pl-1 border-l border-slate-200">
                   <button
-                    onClick={() => {
-                      setAuthEditName(currentUser.name || '');
-                      setIsSettingsModalOpen(true);
-                    }}
+                    onClick={() => setIsSettingsModalOpen(true)}
                     className="flex items-center gap-1 px-2 py-1 text-slate-600 hover:text-rose-600 text-xs font-normal rounded-lg hover:bg-rose-50 transition cursor-pointer"
                     title={t('settingsTitle')}
                   >
@@ -2134,7 +2108,7 @@ export default function App() {
         </p>
       </footer>
 
-      {/* 💳 결제 요금제 모달 (다국어 constants 연동 완료) 💳 */}
+      {/* 💳 결제 요금제 모달 💳 */}
       {isPricingModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-rose-100 relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
@@ -2308,7 +2282,7 @@ export default function App() {
                             <>[必填] 我同意支付條款及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消訂閱政策</button>。</>
                           )}
                           {lang === 'ja' && (
-                            <>[必須] 決済利用規約および<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">返金・解約ポリシー</button>에 동의합니다.</>
+                            <>[必須] 決済利用規約および<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">返金・解約ポリシー</button>に同意します。</>
                           )}
                         </span>
                       </label>
@@ -2633,7 +2607,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ⚙️ 계정 및 프로필 설정 모달 */}
+      {/* ⚙️ 계정 및 프로필 설정 모달 (닉네임 변경란 제거됨) */}
       {isSettingsModalOpen && currentUser && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-xl border border-rose-100 relative">
@@ -2648,29 +2622,11 @@ export default function App() {
               <h2 className="text-base font-bold text-slate-900 flex items-center justify-center gap-1">
                 <span>⚙️</span> {t('settingsTitle')}
               </h2>
+              <p className="text-xs text-slate-700 font-bold mt-1">{currentUser.name}</p>
               <p className="text-xs text-slate-400 mt-0.5">{currentUser.email}</p>
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1">{t('changeNickname')}</label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setAuthEditName(e.target.value)}
-                  className="w-full text-xs p-2.5 border border-slate-200 rounded-xl outline-none focus:border-rose-400 bg-slate-50 font-medium"
-                />
-              </div>
-
-              <button
-                onClick={handleSaveSettings}
-                className="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl transition shadow-2xs cursor-pointer"
-              >
-                {t('saveProfileBtn')}
-              </button>
-
-              <hr className="border-slate-100 my-2" />
-
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-1.5">
