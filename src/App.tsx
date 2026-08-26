@@ -1121,14 +1121,14 @@ export default function App() {
               </div>
             </div>
 
-            {/* 🌸 5개 언어 모두 고정 표시되는 YomiYomi 로고 🌸 */}
+            {/* 🌸 5개 언어 전환 시에도 100% 동일하게 디자인과 폰트가 지속 고정되는 로고 🌸 */}
             <div className="flex items-center justify-center">
               <button 
                 onClick={() => setActiveTab('analyze')}
                 className="flex items-center space-x-1.5 sm:space-x-2 focus:outline-none group cursor-pointer"
               >
-                <span className="text-xl sm:text-2xl group-hover:scale-110 transition">🌸</span>
-                <h1 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 group-hover:text-rose-600 transition flex items-center gap-1.5">
+                <span className="text-xl sm:text-2xl group-hover:scale-110 transition select-none">🌸</span>
+                <h1 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 group-hover:text-rose-600 transition flex items-center gap-1.5 app-logo-text">
                   <span>YomiYomi</span>
                   {currentUser?.isSubscribed && (
                     <span className="font-black text-rose-600 text-lg sm:text-2xl ml-0.5">
@@ -1136,7 +1136,7 @@ export default function App() {
                     </span>
                   )}
                 </h1>
-                <span className="text-xl sm:text-2xl group-hover:scale-110 transition">🌸</span>
+                <span className="text-xl sm:text-2xl group-hover:scale-110 transition select-none">🌸</span>
               </button>
             </div>
 
@@ -2384,7 +2384,7 @@ export default function App() {
 
             <div className="text-center mb-5">
               <span className="text-2xl block mb-1">🌸</span>
-              <h2 className="text-2xl font-black text-slate-900">YomiYomi</h2>
+              <h2 className="text-2xl font-black text-slate-900 app-logo-text">YomiYomi</h2>
               <p className="text-xs text-slate-500 mt-1">
                 {authMode === 'login' ? t('loginSub') : t('signupSub')}
               </p>
@@ -2687,8 +2687,14 @@ export default function App() {
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
         }
 
-        /* 중국어 간체(zh-CN) 및 번체/대만어(zh-TW) 얇은 글씨(Regular 400) 적용 */
-        html[lang="zh-CN"], html[lang="zh-TW"], html[lang="zh-CN"] *, html[lang="zh-TW"] * {
+        /* 🌸 로고 폰트 고정 전용 스타일 (!important로 언어 변경 폰트 강제 적용 방지) 🌸 */
+        .app-logo-text, .app-logo-text * {
+          font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+        }
+
+        /* 중국어 간체(zh-CN) 및 번체/대만어(zh-TW) 얇은 글씨(Regular 400) 적용 (로고 제외) */
+        html[lang="zh-CN"] body *:not(.app-logo-text):not(.app-logo-text *),
+        html[lang="zh-TW"] body *:not(.app-logo-text):not(.app-logo-text *) {
           font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Noto Sans SC", sans-serif !important;
           font-weight: 400 !important;
           -webkit-font-smoothing: antialiased !important;
