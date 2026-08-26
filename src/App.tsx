@@ -216,11 +216,7 @@ export default function App() {
 
           const verifyData = await verifyRes.json();
           if (verifyData.success) {
-            if (db && db.app) {
-              const userDocRef = doc(db, 'users', user.uid);
-              await setDoc(userDocRef, { lastPaymentAt: Date.now() }, { merge: true });
-            }
-
+            // 🌸 프론트엔드 중복 DB 수정 제거됨 (백엔드가 이미 처리 완료) 🌸
             showAlert(`🎉 ${planName} 결제 및 승인이 완료되었습니다!`);
             sessionStorage.removeItem('pendingPlanName');
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -661,10 +657,7 @@ export default function App() {
         return;
       }
 
-      if (db && db.app) {
-        const userDocRef = doc(db, 'users', currentUser.id);
-        await setDoc(userDocRef, { lastPaymentAt: Date.now() }, { merge: true });
-      }
+      // 🌸 프론트엔드 중복 DB 수정 제거됨 (백엔드가 이미 처리 완료) 🌸
 
       setCurrentUser((prev) => prev ? {
         ...prev,
@@ -1188,15 +1181,15 @@ export default function App() {
                 <span className="hidden sm:inline">{t('membership')}</span>
               </button>
 
-              {/* 🌐 상단 통합 언어 선택 드롭다운 🌐 */}
+              {/* 🌐 상단 통합 언어 선택 드롭다운 (얇은 글씨체 적용) 🌐 */}
               <div className="relative inline-block text-left" ref={headerLangRef}>
                 <button
                   type="button"
                   onClick={() => setIsHeaderLangOpen(!isHeaderLangOpen)}
-                  className="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl flex items-center gap-1.5 text-xs font-bold text-slate-700 transition cursor-pointer shrink-0"
+                  className="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl flex items-center gap-1.5 text-xs font-normal text-slate-700 transition cursor-pointer shrink-0"
                 >
                   <img src={currentLangObj.flagUrl} alt={currentLangObj.label} className="w-4 h-3 object-cover rounded-2xs" />
-                  <span className="hidden sm:inline text-[11px]">{currentLangObj.label}</span>
+                  <span className="hidden sm:inline text-[11px] font-normal">{currentLangObj.label}</span>
                   <span className="text-[9px] text-slate-400">▾</span>
                 </button>
 
@@ -1210,12 +1203,12 @@ export default function App() {
                           handleLanguageChange(item.code);
                           setIsHeaderLangOpen(false);
                         }}
-                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-left hover:bg-rose-50 transition ${
-                          lang === item.code ? 'text-rose-600 bg-rose-50/50' : 'text-slate-700'
+                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-rose-50 transition ${
+                          lang === item.code ? 'text-rose-600 font-medium bg-rose-50/50' : 'text-slate-700 font-normal'
                         }`}
                       >
                         <img src={item.flagUrl} alt={item.label} className="w-4 h-3 object-cover rounded-2xs" />
-                        <span>{item.label}</span>
+                        <span className={lang === item.code ? 'font-medium' : 'font-normal'}>{item.label}</span>
                       </button>
                     ))}
                   </div>
@@ -1229,16 +1222,16 @@ export default function App() {
                       setAuthEditName(currentUser.name || '');
                       setIsSettingsModalOpen(true);
                     }}
-                    className="flex items-center gap-1 px-2 py-1 text-slate-600 hover:text-rose-600 text-xs font-bold rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                    className="flex items-center gap-1 px-2 py-1 text-slate-600 hover:text-rose-600 text-xs font-normal rounded-lg hover:bg-rose-50 transition cursor-pointer"
                     title={t('settingsTitle')}
                   >
                     <span>⚙️</span>
-                    <span className="hidden sm:inline">{t('settingsTitle')}</span>
+                    <span className="hidden sm:inline font-normal">{t('settingsTitle')}</span>
                   </button>
 
                   <button
                     onClick={handleLogout}
-                    className="hidden md:inline ml-1 px-2 py-1 text-[11px] font-semibold text-slate-500 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                    className="hidden md:inline ml-1 px-2 py-1 text-[11px] font-normal text-slate-500 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                   >
                     {t('logout')}
                   </button>
