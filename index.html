@@ -1,48 +1,47 @@
-\<!DOCTYPE html>
-<html lang="ko">
+<!DOCTYPE html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     
-    <!-- 🌸 파비콘 설정 🌸 -->
-    <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="shortcut icon" href="/favicon.png" />
-    <link rel="apple-touch-icon" href="/favicon.png" />
+    <!-- 🌸 벚꽃 파비콘 (서버 이미지 파일 없이 100% 확실하게 🌸 이모지 출력) 🌸 -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌸</text></svg>" />
+    <link rel="shortcut icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌸</text></svg>" />
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌸</text></svg>" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <title>YomiYomi - AI Japanese Analyzer</title>
     <meta name="description" content="YomiYomi - AI-powered Japanese Sentence Analyzer, Furigana Generator, Grammar Explanations, Vocabulary Book and Quiz." />
     
-    <!-- 🚀 5개국어 통합 SEO 키워드 -->
+    <!-- 🚀 글로벌 SEO 키워드 (영어 -> 중국어 -> 대만어 -> 한국어 -> 일본어 순) -->
     <meta name="keywords" content="
-      YomiYomi, 요미요미, yomiyomi-jp, 요미요미 일본어, 요미가나, 후리가나, 振仮名, 読み仮名,
+      YomiYomi, yomiyomi-jp, Japanese, Learn Japanese, Study Japanese, Japanese Analyzer, Japanese Parser, Japanese Sentence Analyzer, Japanese Translator,
+      Furigana Generator, Furigana Adder, Kanji Reading, Kanji Converter, Kanji to Hiragana, Hiragana, Katakana, Kanji,
+      Japanese Vocabulary, Vocabulary Book, Word Quiz, Vocabulary Sheet, PDF Vocabulary Sheet, Anki Deck, Anki Export,
+      JLPT Prep, JLPT Study, JLPT N1, JLPT N2, JLPT N3, JLPT N4, JLPT N5, JLPT Kanji, JLPT Vocabulary,
+      Japanese Grammar, Japanese Reading, Japanese Novel Reading, Japanese Anime Transcripts, Japanese Lyrics Translation,
+      Jisho Alternative, Yomichan Alternative, Migaku Alternative,
+      日語, 日语, 日語學習, 日语学习, 日語自學, 日语自学, 日語檢定, 日语等级考试, 日語學習方法, 日语学习方法,
+      日語句子分析, 日语句子分析, 日語翻譯, 日语翻译, 假名標註, 假名标注, 漢字標註, 汉字标注, 漢字讀音, 汉字读音, 漢字轉假名, 汉字转假名,
+      單字本, 生词本, 單字測驗, 单词测验, PDF單字本, PDF单词本, Anki單字本, Anki生词本,
+      JLPT N1, JLPT N2, JLPT N3, JLPT N4, JLPT N5, JLPT單字, JLPT单词, JLPT語法, JLPT语法,
+      日語語法, 日语语法, 日語閱讀, 日语阅读, 輕小說閱讀, 轻小说阅读, 動漫台詞, 动漫台词, 歌詞翻譯, 歌词翻译,
+      요미요미, 요미요미 일본어, 요미가나, 후리가나, 振仮名, 読み仮名,
       일본어, 일본어 공부, 일본어 학습, 일본어 자격증, 일본어 공부법, 일본어 독학, 일본어 기초, 초급 일본어, 중급 일본어, 고급 일본어,
       일본어 문장 분석, 일본어 문장 해석, 일본어 문장 번역, 일본어 한자 읽는법, 일본어 한자 읽기, 일본어 한자 변환, 일본어 훈독 음독,
       일본어 단어장, 일본어 단어 퀴즈, 일본어 단어 테스트, 일본어 단어 암기, PDF 단어장, PDF 시험지, Anki 단어장, Anki 덱, Anki 내보내기,
       JLPT, JLPT N1, JLPT N2, JLPT N3, JLPT N4, JLPT N5, JLPT 단어, JLPT 문법, JLPT 독해, JPT, EJU, 일본 유학, 일본 취업,
       일본어 문법 해설, 일본어 동사 활용, 일본어 원서 읽기, 일본어 라노벨 읽기, 일본어 애니 대사, 일본어 가사 해석,
       네이버 일본어 사전, 파파고 일본어, 구글 일본어 번역, Jisho, Yomichan, Migaku, Todaii, Satori Reader,
-      Japanese, Learn Japanese, Study Japanese, Japanese Analyzer, Japanese Parser, Japanese Sentence Analyzer, Japanese Translator,
-      Furigana Generator, Furigana Adder, Kanji Reading, Kanji Converter, Kanji to Hiragana, Hiragana, Katakana, Kanji,
-      Japanese Vocabulary, Vocabulary Book, Word Quiz, Vocabulary Sheet, PDF Vocabulary Sheet, Anki Deck, Anki Export,
-      JLPT Prep, JLPT Study, JLPT N1, JLPT N2, JLPT N3, JLPT N4, JLPT N5, JLPT Kanji, JLPT Vocabulary,
-      Japanese Grammar, Japanese Reading, Japanese Novel Reading, Japanese Anime Transcripts, Japanese Lyrics Translation,
-      Jisho Alternative, Yomichan Alternative, Migaku Alternative,
       日本語, 日本語学習, 日本語勉強, 日本語独学, 日本語資格, 日本語勉強法, 日本語初心者,
       日本語文章解析, 日本語文解析, 日本語翻訳, ふりがな, 読み仮名, 振仮名, 漢字読み方, 漢字変換, 漢字ルビ, 振仮名変換,
       単語帳, 単語クイズ, 単語テスト, 単語暗記, PDF単語帳, Anki単語帳, Ankiエクスポート,
       JLPT, JLPT N1, JLPT N2, JLPT N3, JLPT N4, JLPT N5, JLPT単語, JLPT文法, JLPT読解, JPT, EJU,
-      日本語文法, 日本語動詞活用, 日本語原書音読, ラノベ読解, アニメ台詞, 歌詞翻訳,
-      日語, 日语, 日語學習, 日语学习, 日語自學, 日语自学, 日語檢定, 日语等级考试, 日語學習方法, 日语学习方法,
-      日語句子分析, 日语句子分析, 日語翻譯, 日语翻译, 假名標註, 假名标注, 漢字標註, 汉字标注, 漢字讀音, 汉字读音, 漢字轉假名, 汉字转假名,
-      單字本, 生词本, 單字測驗, 单词测验, PDF單字本, PDF单词本, Anki單字本, Anki生词本,
-      JLPT N1, JLPT N2, JLPT N3, JLPT N4, JLPT N5, JLPT單字, JLPT单词, JLPT語法, JLPT语法,
-      日語語法, 日语语法, 日語閱讀, 日语阅读, 輕小說閱讀, 轻小说阅读, 動漫台詞, 动漫台词, 歌詞翻譯, 歌词翻译
+      日本語文法, 日本語動詞活用, 日本語原書音読, ラノベ読解, アニメ台詞, 歌詞翻訳
     " />
     <meta name="author" content="YomiYomi" />
     
-    <!-- 🌸 오픈그래프 (카카오톡, SNS 링크 공유용 OG Image) 🌸 -->
+    <!-- 🌸 오픈그래프 (링크 공유용 이미지) 🌸 -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="YomiYomi - AI Japanese Analyzer" />
     <meta property="og:description" content="AI-powered Japanese sentence analysis, furigana generation, and vocabulary learning." />
