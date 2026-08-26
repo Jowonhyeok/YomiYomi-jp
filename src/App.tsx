@@ -6,6 +6,7 @@ import {
   signInWithPopup, 
   signOut, 
   onAuthStateChanged,
+  updateProfile,
   sendEmailVerification,
   deleteUser
 } from 'firebase/auth';
@@ -55,7 +56,6 @@ const DEFAULT_DECK_DATA: Deck = {
   createdAt: new Date().toISOString()
 };
 
-// 🌸 헤더 상단 언어 선택 옵션 🌸
 const LANG_OPTIONS: { code: Lang; flagUrl: string; label: string }[] = [
   { code: 'en', flagUrl: 'https://flagcdn.com/us.svg', label: 'English' },
   { code: 'zh-CN', flagUrl: 'https://flagcdn.com/cn.svg', label: '简体中文' },
@@ -79,7 +79,6 @@ export default function App() {
 
   const t = (key: string) => DICT[lang]?.[key] || DICT['en']?.[key] || DICT['ko']?.[key] || key;
 
-  // 🌸 언어별 회원가입 이메일 발송 안내 메시지 매핑 🌸
   const getSignupEmailNotice = (userLang: Lang) => {
     switch (userLang) {
       case 'ko':
@@ -109,7 +108,6 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLeftSidebarOpenMobile, setIsLeftSidebarOpenMobile] = useState(false);
 
-  // 🌸 브라우저 탭 파비콘 적용 🌸
   useEffect(() => {
     if (typeof document !== 'undefined') {
       const existingFavicons = document.querySelectorAll("link[rel*='icon']");
@@ -123,7 +121,6 @@ export default function App() {
     }
   }, []);
 
-  // 헤더 언어 드롭다운
   const [isHeaderLangOpen, setIsHeaderLangOpen] = useState(false);
   const headerLangRef = useRef<HTMLDivElement>(null);
 
@@ -183,7 +180,7 @@ export default function App() {
         const userDocRef = doc(db, 'users', currentUser.id);
         await setDoc(userDocRef, { lastUsedAt: Date.now() }, { merge: true });
       } catch (e) {
-        console.error("Failed to record usage", e);
+        // 보안 규칙 제한으로 에러 발생 시 무시
       }
     }
   };
@@ -207,7 +204,7 @@ export default function App() {
     setLang(newLang);
     if (currentUser && db && db.app) {
       const userDocRef = doc(db, 'users', currentUser.id);
-      setDoc(userDocRef, { lang: newLang }, { merge: true });
+      setDoc(userDocRef, { lang: newLang }, { merge: true }).catch(() => {});
     }
   };
 
@@ -278,7 +275,7 @@ export default function App() {
                   isSubscribed: false, 
                   cancelAtPeriodEnd: false, 
                   subscriptionPlan: 'Free' 
-                }, { merge: true });
+                }, { merge: true }).catch(() => {});
               }
             }
 
@@ -316,7 +313,7 @@ export default function App() {
             };
             const initialDeck: Deck[] = [DEFAULT_DECK_DATA];
             setCurrentUser(newUser);
-            setDoc(userDocRef, { ...newUser, decks: initialDeck });
+            setDoc(userDocRef, { ...newUser, decks: initialDeck }).catch(() => {});
           }
         }, (err) => console.error(err));
 
@@ -345,7 +342,7 @@ export default function App() {
     setDecks(sanitized);
     if (currentUser && db && db.app) {
       const userDocRef = doc(db, 'users', currentUser.id);
-      await setDoc(userDocRef, { decks: sanitized }, { merge: true });
+      await setDoc(userDocRef, { decks: sanitized }, { merge: true }).catch(() => {});
     } else {
       localStorage.setItem('koto_decks', JSON.stringify(sanitized));
     }
@@ -381,7 +378,7 @@ export default function App() {
         
         if (db && db.app) {
           const userDocRef = doc(db, 'users', userCredential.user.uid);
-          await setDoc(userDocRef, { name: authName.trim(), lang: lang }, { merge: true });
+          await setDoc(userDocRef, { name: authName.trim(), lang: lang }, { merge: true }).catch(() => {});
         }
 
         await sendEmailVerification(userCredential.user);
@@ -489,7 +486,7 @@ export default function App() {
     try {
       if (db && db.app) {
         const userDocRef = doc(db, 'users', currentUser.id);
-        await setDoc(userDocRef, { cancelAtPeriodEnd: false }, { merge: true });
+        await setDoc(userDocRef, { cancelAtPeriodEnd: false }, { merge: true }).catch(() => {});
       }
       setCurrentUser(prev => prev ? { ...prev, cancelAtPeriodEnd: false } : null);
       showAlert(lang === 'ko' ? "구독 해지 예약이 철회되었습니다. 정기 구독이 유지됩니다." : "Subscription renewal resumed successfully.");
@@ -641,14 +638,10 @@ export default function App() {
         })
       });
       
-      if (!verifyRes.ok) {
-        throw new Error(`API 검증 서버 연동 에러 (${verifyRes.status})`);
-      }
+      const verifyData = await verifyRes.json().catch(() => null);
 
-      const verifyData = await verifyRes.json();
-
-      if (!verifyData.success) {
-        showAlert(`결제 검증 실패: ${verifyData.message || '검증에 실패했습니다.'}`);
+      if (!verifyRes.ok || !verifyData || !verifyData.success) {
+        showAlert(`결제 검증 실패: ${verifyData?.message || '검증 과정에서 오류가 발생했습니다.'}`);
         return;
       }
 
@@ -1146,7 +1139,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* 🌸 로고 🌸 */}
             <div className="flex items-center justify-center">
               <button 
                 onClick={() => setActiveTab('analyze')}
@@ -1174,7 +1166,6 @@ export default function App() {
                 <span className="hidden sm:inline">{t('membership')}</span>
               </button>
 
-              {/* 🌐 상단 통합 언어 선택 드롭다운 🌐 */}
               <div className="relative inline-block text-left" ref={headerLangRef}>
                 <button
                   type="button"
@@ -2607,7 +2598,6 @@ export default function App() {
         </div>
       )}
 
-      {/* ⚙️ 계정 및 프로필 설정 모달 (닉네임 변경란 제거됨) */}
       {isSettingsModalOpen && currentUser && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-xl border border-rose-100 relative">
@@ -2716,12 +2706,10 @@ export default function App() {
           -moz-osx-font-smoothing: grayscale;
         }
 
-        /* 🌸 로고 폰트 고정 🌸 */
         .app-logo-text, .app-logo-text * {
           font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
         }
 
-        /* 🇨🇳 중국어(간체/번체) 폰트 패밀리 지정 */
         html[lang="zh-CN"] body *:not(.app-logo-text):not(.app-logo-text *),
         html[lang="zh-TW"] body *:not(.app-logo-text):not(.app-logo-text *) {
           font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif !important;
