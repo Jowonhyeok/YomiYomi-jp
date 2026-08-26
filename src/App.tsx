@@ -56,7 +56,7 @@ const DEFAULT_DECK_DATA: Deck = {
   createdAt: new Date().toISOString()
 };
 
-// 🌸 헤더 상단 국기 드롭다운용 언어 목록 🌸
+// 🌸 헤더 상단 언어 선택 옵션 🌸
 const LANG_OPTIONS: { code: Lang; flagUrl: string; label: string }[] = [
   { code: 'ko', flagUrl: 'https://flagcdn.com/kr.svg', label: '한국어' },
   { code: 'en', flagUrl: 'https://flagcdn.com/us.svg', label: 'English' },
@@ -93,7 +93,7 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLeftSidebarOpenMobile, setIsLeftSidebarOpenMobile] = useState(false);
 
-  // 헤더 언어 드롭다운 팝오버 상태 및 외부클릭 감지
+  // 헤더 언어 드롭다운
   const [isHeaderLangOpen, setIsHeaderLangOpen] = useState(false);
   const headerLangRef = useRef<HTMLDivElement>(null);
 
@@ -174,7 +174,6 @@ export default function App() {
     }
   }, [decks, selectedDeckId, setSelectedDeckId]);
 
-  // 🌐 언어 변경 시 전역 상태 및 DB 유저 프로필 자동 업데이트 🌐
   const handleLanguageChange = (newLang: Lang) => {
     setLang(newLang);
     if (currentUser && db && db.app) {
@@ -1147,7 +1146,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* 🌸 5개 언어 전환 시에도 100% 동일하게 디자인과 폰트가 지속 고정되는 로고 🌸 */}
+            {/* 🌸 로고 🌸 */}
             <div className="flex items-center justify-center">
               <button 
                 onClick={() => setActiveTab('analyze')}
@@ -1211,7 +1210,6 @@ export default function App() {
 
               {currentUser ? (
                 <div className="flex items-center pl-1 border-l border-slate-200">
-                  {/* ⚙️ 아이콘 + 텍스트 버튼으로 변경 완료 */}
                   <button
                     onClick={() => {
                       setAuthEditName(currentUser.name || '');
@@ -2113,6 +2111,7 @@ export default function App() {
         </p>
       </footer>
 
+      {/* 💳 수정된 구독 및 결제 요금제 모달 (3개월 $12 / 1년 $38.40 / 평생 $45) 💳 */}
       {isPricingModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-rose-100 relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
@@ -2177,48 +2176,63 @@ export default function App() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {/* 1. 3개월 플랜 ($12.00) */}
                       <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition">
                         <div>
-                          <span className="text-xs font-bold text-slate-500 block mb-1">{t('plan1m')}</span>
-                          <div className="text-base font-black text-slate-900 mb-1">{t('price1m')}</div>
-                          <span className="text-[10px] text-slate-400">{t('perMonth')}</span>
+                          <span className="text-xs font-bold text-slate-500 block mb-1">
+                            {lang === 'ko' ? '3개월' : '3 Months'}
+                          </span>
+                          <div className="text-base font-black text-slate-900 mb-1">$12.00 USD</div>
+                          <span className="text-[10px] text-slate-400">
+                            {lang === 'ko' ? '월 $4.00 (약 1.6만원)' : '$4.00 / mo'}
+                          </span>
                         </div>
                         <button
-                          onClick={() => setSelectedPlanForPay({ planName: t('plan1m'), priceAmount: 3.90 })}
+                          onClick={() => setSelectedPlanForPay({ planName: lang === 'ko' ? '3개월' : '3 Months', priceAmount: 12.00 })}
                           className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-2xs transition cursor-pointer"
                         >
                           {t('subscribePlan')}
                         </button>
                       </div>
 
+                      {/* 2. 1년 플랜 ($38.40) */}
                       <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition relative">
                         <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-                          {t('off20')}
+                          20% OFF
                         </span>
                         <div>
-                          <span className="text-xs font-bold text-slate-500 block mb-1">{t('plan6m')}</span>
-                          <div className="text-base font-black text-slate-900 mb-1">{t('price6m')}</div>
-                          <span className="text-[10px] text-amber-700 font-semibold">{t('perMonth6')}</span>
+                          <span className="text-xs font-bold text-slate-500 block mb-1">
+                            {lang === 'ko' ? '1년 구독' : '1 Year'}
+                          </span>
+                          <div className="text-base font-black text-slate-900 mb-1">$38.40 USD</div>
+                          <span className="text-[10px] text-amber-700 font-semibold">
+                            {lang === 'ko' ? '월 $3.20 (약 5.3만원)' : '$3.20 / mo'}
+                          </span>
                         </div>
                         <button
-                          onClick={() => setSelectedPlanForPay({ planName: t('plan6m'), priceAmount: 18.99 })}
+                          onClick={() => setSelectedPlanForPay({ planName: lang === 'ko' ? '1년 구독' : '1 Year', priceAmount: 38.40 })}
                           className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-2xs transition cursor-pointer"
                         >
                           {t('subscribePlan')}
                         </button>
                       </div>
 
+                      {/* 3. 평생 이용권 ($45.00) */}
                       <div className="p-4 bg-rose-50/80 border border-rose-300 rounded-2xl flex flex-col justify-between text-center relative shadow-xs">
                         <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-                          {t('off50')}
+                          🔥 BEST
                         </span>
                         <div>
-                          <span className="text-xs font-bold text-rose-700 block mb-1">{t('plan1y')}</span>
-                          <div className="text-base font-black text-rose-900 mb-1">{t('price1y')}</div>
-                          <span className="text-[10px] text-rose-600 font-bold">{t('perMonth12')}</span>
+                          <span className="text-xs font-bold text-rose-700 block mb-1">
+                            {lang === 'ko' ? '평생 이용권' : 'Lifetime Pass'}
+                          </span>
+                          <div className="text-base font-black text-rose-900 mb-1">$45.00 USD</div>
+                          <span className="text-[10px] text-rose-600 font-bold">
+                            {lang === 'ko' ? '무제한 무기한 (약 6.2만원)' : 'Unlimited Access'}
+                          </span>
                         </div>
                         <button
-                          onClick={() => setSelectedPlanForPay({ planName: t('plan1y'), priceAmount: 23.99 })}
+                          onClick={() => setSelectedPlanForPay({ planName: lang === 'ko' ? '평생 이용권' : 'Lifetime Pass', priceAmount: 45.00 })}
                           className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-2xs transition cursor-pointer"
                         >
                           {t('subscribePlan')}
@@ -2259,19 +2273,19 @@ export default function App() {
                         />
                         <span className="leading-tight text-[11px]">
                           {lang === 'ko' && (
-                            <>[필수] 매월/매년 자동 갱신 결제 및 <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">환불·구독해지 정책</button>에 동의합니다.</>
+                            <>[필수] 결제 약관 및 <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">환불·구독해지 정책</button>에 동의합니다.</>
                           )}
                           {lang === 'en' && (
-                            <>[Required] I agree to recurring auto-renewals and the <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">Refund & Cancellation Policy</button>.</>
+                            <>[Required] I agree to the payment terms and the <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">Refund & Cancellation Policy</button>.</>
                           )}
                           {lang === 'zh-CN' && (
-                            <>[必填] 我同意自动续费及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消订阅政策</button>。</>
+                            <>[必填] 我同意支付条款及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消订阅政策</button>。</>
                           )}
                           {lang === 'zh-TW' && (
-                            <>[必填] 我同意自動續費及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消訂閱政策</button>。</>
+                            <>[必填] 我同意支付條款及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消訂閱政策</button>。</>
                           )}
                           {lang === 'ja' && (
-                            <>[必須] 自動更新および<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">返金・解約ポリシー</button>に同意します。</>
+                            <>[必須] 決済利用規約および<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">返金・解約ポリシー</button>に同意します。</>
                           )}
                         </span>
                       </label>
@@ -2596,7 +2610,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ⚙️ 계정 및 프로필 설정 모달 (언어 중복 선택 버튼 제거 및 깔끔하게 다듬기) */}
+      {/* ⚙️ 계정 및 프로필 설정 모달 */}
       {isSettingsModalOpen && currentUser && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-xl border border-rose-100 relative">
@@ -2723,12 +2737,12 @@ export default function App() {
           -moz-osx-font-smoothing: grayscale;
         }
 
-        /* 🌸 로고 폰트 고정 전용 스타일 (!important로 언어 변경 폰트 강제 적용 방지) 🌸 */
+        /* 🌸 로고 폰트 고정 🌸 */
         .app-logo-text, .app-logo-text * {
           font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
         }
 
-        /* 🇨🇳 중국어(간체/번체) 폰트 패밀리 지정 및 굵기 이슈 완벽 처리 */
+        /* 🇨🇳 중국어(간체/번체) 폰트 패밀리 지정 */
         html[lang="zh-CN"] body *:not(.app-logo-text):not(.app-logo-text *),
         html[lang="zh-TW"] body *:not(.app-logo-text):not(.app-logo-text *) {
           font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif !important;
