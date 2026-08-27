@@ -740,7 +740,7 @@ export const RECOMMENDED_SITES: Record<Lang, Array<{ name: string; url: string; 
   ko: [
     { name: 'NHK News Web', url: 'https://www3.nhk.or.jp/news/', desc: '실제 일본 현지 뉴스를 실시간으로 읽고 yomiyomi로 복사해 문장을 해독해 보세요.', icon: '📰' },
     { name: 'JLPT Sensei', url: 'https://jlptsensei.com/', desc: 'JLPT 급수별 어휘, 문법 구조, 예문을 체계적으로 찾아보는 학습 사이트', icon: '📚' },
-    { name: 'Tofugu', url: 'https://www.tofugu.com/', desc: '일본어 뉘앙스 차이, 암기 팁, 문화 콘텐츠를 다루는 종합 가이드 사이트', icon: 'BF' }
+    { name: 'Tofugu', url: 'https://www.tofugu.com/', desc: '일본어 뉘앙스 차이, 암기 팁, 문화 콘텐츠를 다루는 종합 가이드 사이트', icon: '🐡' }
   ],
   en: [
     { name: 'NHK News Web', url: 'https://www3.nhk.or.jp/news/', desc: 'Read authentic Japanese news in real-time and analyze text seamlessly with yomiyomi.', icon: '📰' },
