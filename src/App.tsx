@@ -79,7 +79,6 @@ export default function App() {
 
   const t = (key: string) => DICT[lang]?.[key] || DICT['en']?.[key] || DICT['ko']?.[key] || key;
 
-  // 🌐 4번: 브라우저 언어 자동 감지 로직 (최초 진입 시)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const savedLang = localStorage.getItem('user_lang') as Lang;
@@ -96,7 +95,7 @@ export default function App() {
     } else if (browserLang.startsWith('ja')) {
       setLang('ja');
     } else {
-      setLang('zh-CN'); // 메인 타깃 중국어 기본 설정
+      setLang('zh-CN');
     }
   }, [setLang]);
 
@@ -1607,13 +1606,13 @@ export default function App() {
                           title={t('wordCardTitle')}
                           icon="📌"
                           renderItem={(word) => (
-                            <div className="text-center w-full max-w-sm px-2">
-                              <div className="flex items-center justify-center space-x-2">
-                                <span className="font-bold text-lg text-slate-900">{word.word}</span>
-                                <span className="text-xs text-rose-600 font-semibold">[{word.reading}]</span>
+                            <div className="text-center w-full max-w-sm px-2 py-1">
+                              <div className="flex items-center justify-center space-x-2 mb-1">
+                                <span className="font-bold text-xl text-slate-900">{word.word}</span>
+                                <span className="text-sm text-rose-600 font-semibold">[{word.reading}]</span>
                                 <button
                                   onClick={() => toggleSpeech(word.word)}
-                                  className={`text-xs p-1 rounded transition cursor-pointer ${
+                                  className={`text-sm p-1 rounded transition cursor-pointer ${
                                     speakingText === word.word
                                       ? 'bg-rose-600 text-white font-bold border border-rose-700'
                                       : 'text-slate-400 hover:text-amber-600'
@@ -1621,12 +1620,12 @@ export default function App() {
                                 >
                                   {speakingText === word.word ? '⏹️' : '🔊'}
                                 </button>
-                                {word.jlpt && <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-bold">{word.jlpt}</span>}
+                                {word.jlpt && <span className="text-xs bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-bold">{word.jlpt}</span>}
                               </div>
-                              <p className="text-xs text-slate-600 mt-1.5">
-                                {t('partOfSpeech')}: <span className="font-semibold text-slate-700">{getLocalizedPOS(word.partOfSpeech, lang)}</span>
+                              <p className="text-xs sm:text-sm text-slate-600 mt-2">
+                                {t('partOfSpeech')}: <span className="font-semibold text-slate-800">{getLocalizedPOS(word.partOfSpeech, lang)}</span>
                               </p>
-                              <p className="text-xs mt-1">
+                              <p className="text-xs sm:text-sm mt-1.5">
                                 {t('meaning')}: {' '}
                                 <span className={hideMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'font-bold text-slate-800'}>
                                   {getLocalizedText(word.meaning, lang)}
@@ -1634,7 +1633,7 @@ export default function App() {
                               </p>
                               <button
                                 onClick={() => handleAddCardToDeck(word)}
-                                className="mt-2.5 px-3 py-1 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold rounded-lg transition shadow-2xs active:scale-95 cursor-pointer"
+                                className="mt-3 px-4 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-sm font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
                               >
                                 {t('addWordBtn')}
                               </button>
@@ -1666,12 +1665,12 @@ export default function App() {
                           title={t('kanjiCardTitle')}
                           icon="🏮"
                           renderItem={(k) => (
-                            <div className="text-center w-full max-w-sm px-2">
+                            <div className="text-center w-full max-w-sm px-2 py-1">
                               <div className="flex justify-center items-center gap-1.5 mb-1">
                                 <span className="text-2xl font-bold text-slate-800">{k.kanji}</span>
                                 <button
                                   onClick={() => toggleSpeech(k.kanji)}
-                                  className={`text-xs p-1 rounded transition cursor-pointer ${
+                                  className={`text-sm p-1 rounded transition cursor-pointer ${
                                     speakingText === k.kanji
                                       ? 'bg-rose-600 text-white font-bold border border-rose-700'
                                       : 'text-slate-400 hover:text-amber-600'
@@ -1680,16 +1679,16 @@ export default function App() {
                                   {speakingText === k.kanji ? '⏹️' : '🔊'}
                                 </button>
                               </div>
-                              <span className="text-xs text-rose-600 font-bold block">{k.readings}</span>
-                              <span className="text-xs block mt-1">
+                              <span className="text-sm text-rose-600 font-bold block">{k.readings}</span>
+                              <span className="text-xs sm:text-sm block mt-1.5">
                                 {t('meaning')}: {' '}
-                                <span className={hideMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'font-semibold text-slate-700'}>
+                                <span className={hideMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'font-semibold text-slate-800'}>
                                   {getLocalizedText(k.meaning, lang)}
                                 </span>
                               </span>
                               <button
                                 onClick={() => handleAddKanjiToDeck(k)}
-                                className="mt-2.5 px-3 py-1 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold rounded-lg transition shadow-2xs active:scale-95 cursor-pointer"
+                                className="mt-3 px-4 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-sm font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
                               >
                                 {t('addWordBtn')}
                               </button>
@@ -1721,18 +1720,18 @@ export default function App() {
                           title={t('grammarCardTitle')}
                           icon="⛩️"
                           renderItem={(g) => (
-                            <div className="text-center w-full max-w-md px-2">
-                              <span className="inline-block px-2.5 py-1 bg-rose-100 text-rose-800 font-bold text-xs rounded-md mb-1.5">
+                            <div className="text-center w-full max-w-md px-2 py-1">
+                              <span className="inline-block px-3 py-1 bg-rose-100 text-rose-800 font-bold text-sm rounded-md mb-2">
                                 {g.grammar}
                               </span>
-                              <p className="text-xs leading-relaxed font-medium mb-2">
-                                <span className={hideMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'text-slate-700'}>
+                              <p className="text-xs sm:text-sm leading-relaxed font-medium mb-3">
+                                <span className={hideMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'text-slate-800'}>
                                   {getLocalizedText(g.explanation, lang)}
                                 </span>
                               </p>
                               <button
                                 onClick={() => handleAddGrammarToDeck(g)}
-                                className="px-3 py-1 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold rounded-lg transition shadow-2xs active:scale-95 cursor-pointer"
+                                className="px-4 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-sm font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
                               >
                                 {t('addWordBtn')}
                               </button>
@@ -2080,7 +2079,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* 5번: 푸터 개인정보 최소화 & 약관 정돈 */}
       <footer className="w-full py-6 flex flex-col items-center justify-center border-t border-slate-200 bg-white mt-12 space-y-2 px-4 text-center">
         <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs font-bold text-slate-600">
           <button onClick={() => openLegalDoc('terms')} className="hover:text-rose-600 hover:underline cursor-pointer">
@@ -2708,31 +2706,29 @@ export default function App() {
         currentLang={lang}
       />
 
-      {/* 1번: 중국어 폰트 크기, 줄간격, 자간 규격 최적화 CSS */}
+      {/* 🌸 전 세계 모든 언어 통합: 가독성, 글자 크기, 여백 스케일 대폭 개선 🌸 */}
       <style>{`
         :root {
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
           text-rendering: optimizeLegibility;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
+          font-size: 15px !important;
+        }
+
+        body {
+          line-height: 1.7 !important;
+          letter-spacing: 0.015em !important;
         }
 
         .app-logo-text, .app-logo-text * {
           font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
         }
 
-        /* 🌸 중국어(간체/번체) 폰트 가독성 및 자간/줄간격 규격 재조정 🌸 */
+        /* 🌸 중국어(간체/번체) 폰트 획수 뭉침 방지 */
         html[lang="zh-CN"] body *:not(.app-logo-text):not(.app-logo-text *),
         html[lang="zh-TW"] body *:not(.app-logo-text):not(.app-logo-text *) {
           font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif !important;
-          line-height: 1.65 !important;
-          letter-spacing: 0.015em !important;
-        }
-
-        html[lang="zh-CN"] .note-content-area,
-        html[lang="zh-TW"] .note-content-area {
-          font-size: 1.05em !important;
-          line-height: 1.8 !important;
           letter-spacing: 0.02em !important;
         }
 
