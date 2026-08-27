@@ -1,4 +1,7 @@
-# 보안 비공개 키 (Firebase / Google Credentials)
+# 환경 변수 및 보안 키 (가장 중요!)
+.env
+.env.*
+!.env.example
 api/serviceAccountKey.json
 server/serviceAccountKey.json
 serviceAccountKey.json
@@ -16,7 +19,6 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-*.local
 
 # Editor directories and files
 .vscode/*
