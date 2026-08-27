@@ -1490,7 +1490,6 @@ export default function App() {
                           </button>
                         </div>
                         
-                        {/* 🌸 2번: 폰트 변경 버튼 삭제 및 컨트롤 바 정돈 🌸 */}
                         <div className="flex flex-wrap items-center space-x-2 text-xs sm:text-sm bg-slate-50 p-1.5 rounded-xl border border-slate-200 gap-y-1">
                           <div className="flex items-center space-x-1">
                             <button
@@ -1533,7 +1532,6 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* 🌸 2번: 폰트 고딕체(Sans-serif) 고정 🌸 */}
                       <div 
                         style={{
                           fontSize: `${fontSize}px`,
@@ -1840,7 +1838,6 @@ export default function App() {
                     />
                   </div>
 
-                  {/* 🌸 3번: 暂无保存的单词。 (저장된 단어가 없습니다) 폰트 10% 확대 🌸 */}
                   {filteredCards.length === 0 ? (
                     <p className="text-sm sm:text-base font-medium text-slate-400 py-8 text-center">
                       {searchKeyword ? t('noSearchWords') : t('noSavedWords')}
@@ -2099,7 +2096,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* 🌸 1번: 푸터 크기 및 폰트 규격 원복 🌸 */}
+      {/* 🌸 푸터 영역: 실제 발급받으신 통신판매업 신고번호 반영 🌸 */}
       <footer className="w-full py-6 flex flex-col items-center justify-center border-t border-slate-200 bg-white mt-12 space-y-2 px-4 text-center">
         <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs font-bold text-slate-600">
           <button onClick={() => openLegalDoc('terms')} className="hover:text-rose-600 hover:underline cursor-pointer">
@@ -2118,8 +2115,11 @@ export default function App() {
         <div className="text-[11px] text-slate-500 space-y-1 max-w-2xl leading-relaxed">
           <p>
             {lang === 'ko'
-              ? '상호명: YomiYomi | 고객지원: support@yomiyomi-jp.com | 사업자등록번호: 588-26-01979 | 통신판매업신고: 제 2026-전남순천-0000 호'
-              : 'Company: YomiYomi | Support: support@yomiyomi-jp.com | Business ID: 588-26-01979'}
+              ? '상호명: YomiYomi | 고객지원: support@yomiyomi-jp.com | 사업자등록번호: 588-26-01979 | 통신판매업신고: 제 2026-전남순천-7351 호'
+              : 'Company: YomiYomi | Support: support@yomiyomi-jp.com | Business ID: 588-26-01979 | E-Commerce Permit: 2026-JeonnamSuncheon-7351'}
+          </p>
+          <p className="text-slate-400 text-[10px] pt-0.5">
+            Our order process is conducted by our online reseller & Merchant of Record, Lemon Squeezy.
           </p>
         </div>
 
