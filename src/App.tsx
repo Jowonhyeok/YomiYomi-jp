@@ -71,9 +71,9 @@ export default function App() {
     setDecks, setSelectedDeckId, setSearchKeyword, setQuizSelectedDeckIds, setQuizState 
   } = useDeckStore();
   const { 
-    activeTab, readingDisplayMode, kanaTab, fontSize, fontFamily, speakingText,
+    activeTab, readingDisplayMode, kanaTab, fontSize, speakingText,
     isPricingModalOpen, selectedPlanForPay, customModal,
-    setActiveTab, setReadingDisplayMode, setKanaTab, setFontSize, setFontFamily,
+    setActiveTab, setReadingDisplayMode, setKanaTab, setFontSize,
     setSpeakingText, setIsPricingModalOpen, setSelectedPlanForPay, showAlert, showConfirm, closeCustomModal
   } = useUIStore();
 
@@ -1490,15 +1490,9 @@ export default function App() {
                           </button>
                         </div>
                         
+                        {/* 🌸 2번: 폰트 변경 버튼 삭제 및 컨트롤 바 정돈 🌸 */}
                         <div className="flex flex-wrap items-center space-x-2 text-xs sm:text-sm bg-slate-50 p-1.5 rounded-xl border border-slate-200 gap-y-1">
-                          <button
-                            onClick={() => setFontFamily(fontFamily === 'serif' ? 'sans' : 'serif')}
-                            className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-100 cursor-pointer"
-                          >
-                            {fontFamily === 'serif' ? t('fontSerif') : t('fontSans')}
-                          </button>
-
-                          <div className="flex items-center space-x-1 border-l border-slate-200 pl-2">
+                          <div className="flex items-center space-x-1">
                             <button
                               onClick={() => setFontSize(prev => Math.max(14, prev - 2))}
                               className="px-2 py-0.5 bg-white border rounded text-slate-700 font-bold hover:bg-slate-100 text-xs cursor-pointer"
@@ -1539,10 +1533,11 @@ export default function App() {
                         </div>
                       </div>
 
+                      {/* 🌸 2번: 폰트 고딕체(Sans-serif) 고정 🌸 */}
                       <div 
                         style={{
                           fontSize: `${fontSize}px`,
-                          fontFamily: fontFamily === 'serif' ? '"Shippori Mincho", "Noto Serif JP", serif' : 'sans-serif'
+                          fontFamily: 'sans-serif'
                         }}
                         className="note-content-area p-4 bg-[#FAF8F5] rounded-xl border border-amber-100 space-y-2.5"
                       >
@@ -1845,8 +1840,9 @@ export default function App() {
                     />
                   </div>
 
+                  {/* 🌸 3번: 暂无保存的单词。 (저장된 단어가 없습니다) 폰트 10% 확대 🌸 */}
                   {filteredCards.length === 0 ? (
-                    <p className="text-xs sm:text-sm text-slate-400 py-6 text-center">
+                    <p className="text-sm sm:text-base font-medium text-slate-400 py-8 text-center">
                       {searchKeyword ? t('noSearchWords') : t('noSavedWords')}
                     </p>
                   ) : (
@@ -2103,8 +2099,9 @@ export default function App() {
         </div>
       </div>
 
+      {/* 🌸 1번: 푸터 크기 및 폰트 규격 원복 🌸 */}
       <footer className="w-full py-6 flex flex-col items-center justify-center border-t border-slate-200 bg-white mt-12 space-y-2 px-4 text-center">
-        <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs sm:text-sm font-bold text-slate-600">
+        <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs font-bold text-slate-600">
           <button onClick={() => openLegalDoc('terms')} className="hover:text-rose-600 hover:underline cursor-pointer">
             {lang === 'ko' ? '서비스 이용약관' : 'Terms of Service'}
           </button>
@@ -2118,7 +2115,7 @@ export default function App() {
           </button>
         </div>
 
-        <div className="text-xs text-slate-500 space-y-1 max-w-2xl leading-relaxed">
+        <div className="text-[11px] text-slate-500 space-y-1 max-w-2xl leading-relaxed">
           <p>
             {lang === 'ko'
               ? '상호명: YomiYomi | 고객지원: support@yomiyomi-jp.com | 사업자등록번호: 588-26-01979 | 통신판매업신고: 제 2026-전남순천-0000 호'
@@ -2126,7 +2123,7 @@ export default function App() {
           </p>
         </div>
 
-        <p className="text-xs text-slate-400 font-normal select-none tracking-wider pt-1">
+        <p className="text-[10px] text-slate-400 font-normal select-none tracking-wider pt-1">
           Copyright © 2026 YomiYomi. All rights reserved.
         </p>
       </footer>
@@ -2730,7 +2727,6 @@ export default function App() {
         currentLang={lang}
       />
 
-      {/* 🌸 전 세계 모든 언어 통합: 전체 폰트 스케일 및 가독성 15% 상향 조정 🌸 */}
       <style>{`
         :root {
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
