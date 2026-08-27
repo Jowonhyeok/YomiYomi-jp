@@ -15,9 +15,6 @@ import { auth, googleProvider, db } from './firebase';
 
 import type { Lang, KanjiInfo, WordInfo, GrammarInfo, AnalysisResult, Deck, UserProfile } from './types';
 import { 
-  PORTONE_STORE_ID, 
-  CHANNEL_KEY_KAKAOPAY, 
-  CHANNEL_KEY_EXIMBAY, 
   MAX_TEXT_LENGTH, 
   HIRAGANA_GRID, 
   KATAKANA_GRID, 
@@ -30,8 +27,7 @@ import {
   calculateDaysLeft, 
   sanitizeDecks, 
   parseRubySentence, 
-  analyzeJapanese,
-  convertUsdToKrw
+  analyzeJapanese
 } from './utils/helpers';
 import { CardCarousel } from './components/CardCarousel';
 import { SidebarWordCarousel } from './components/SidebarCarousel';
@@ -45,7 +41,16 @@ import { useUIStore } from './store/useUIStore';
 
 declare global {
   interface Window {
-    PortOne?: any;
+    createLemonSqueezy?: () => void;
+    LemonSqueezy?: {
+      Url: {
+        Open: (url: string) => void;
+        Close: () => void;
+      };
+      Setup: (options: {
+        eventHandler: (event: { event: string; data?: any }) => void;
+      }) => void;
+    };
   }
 }
 
@@ -72,7 +77,7 @@ export default function App() {
   } = useDeckStore();
   const { 
     activeTab, readingDisplayMode, kanaTab, fontSize, speakingText,
-    isPricingModalOpen, selectedPlanForPay, customModal,
+    isPricingModalOpen, customModal,
     setActiveTab, setReadingDisplayMode, setKanaTab, setFontSize,
     setSpeakingText, setIsPricingModalOpen, setSelectedPlanForPay, showAlert, showConfirm, closeCustomModal
   } = useUIStore();
@@ -102,6 +107,63 @@ export default function App() {
       setLang('zh-CN');
     }
   }, [setLang]);
+
+  // 🍋 Lemon Squeezy SDK 초기화 및 이벤트 등록 🍋
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (window.createLemonSqueezy) {
+        window.createLemonSqueezy();
+      }
+
+      if (window.LemonSqueezy) {
+        window.LemonSqueezy.Setup({
+          eventHandler: async (event) => {
+            if (event.event === 'Checkout.Success') {
+              const orderData = event.data?.order;
+              const planName = sessionStorage.getItem('pendingPlanName') || 'Premium';
+
+              if (auth.currentUser) {
+                try {
+                  const idToken = await auth.currentUser.getIdToken();
+                  const verifyRes = await fetch('/api/payments/verify', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${idToken}`
+                    },
+                    body: JSON.stringify({
+                      orderData,
+                      planName,
+                      userId: auth.currentUser.uid
+                    })
+                  });
+
+                  const verifyData = await verifyRes.json();
+                  if (verifyRes.ok && verifyData.success) {
+                    setCurrentUser((prev) => prev ? {
+                      ...prev,
+                      isSubscribed: true,
+                      subscriptionPlan: planName
+                    } : null);
+
+                    setIsPricingModalOpen(false);
+                    setSelectedPlanForPay(null);
+                    setAgreePayPolicy(false);
+                    sessionStorage.removeItem('pendingPlanName');
+                    showAlert(`🎉 ${planName}${t('subscribeSuccessPost')}`);
+                  } else {
+                    showAlert(`결제 승인 처리 중 에러: ${verifyData?.message || '알 수 없는 오류'}`);
+                  }
+                } catch (err: any) {
+                  showAlert('결제 검증 오류: ' + err.message);
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+  }, [setCurrentUser, setIsPricingModalOpen, setSelectedPlanForPay, showAlert]);
 
   const getSignupEmailNotice = (userLang: Lang) => {
     switch (userLang) {
@@ -237,38 +299,9 @@ export default function App() {
 
   useEffect(() => {
     if (!auth || !auth.onAuthStateChanged) return;
-    
-    const checkPendingMobilePayment = async (user: any) => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const paymentId = urlParams.get('paymentId');
-      if (paymentId) {
-        const planName = sessionStorage.getItem('pendingPlanName') || 'Premium';
-        try {
-          const idToken = await user.getIdToken(true);
-          const verifyRes = await fetch('/api/payments/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
-            body: JSON.stringify({ paymentId, planName, userId: user.uid })
-          });
-          
-          if (!verifyRes.ok) return;
-
-          const verifyData = await verifyRes.json().catch(() => null);
-          if (verifyData && verifyData.success) {
-            showAlert(`🎉 ${planName} 결제 및 승인이 완료되었습니다!`);
-            sessionStorage.removeItem('pendingPlanName');
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
-        } catch (e) {
-          console.error("Mobile payment verification failed:", e);
-        }
-      }
-    };
 
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
-        checkPendingMobilePayment(user);
-
         if (!db || !db.app) {
           setCurrentUser({
             id: user.uid,
@@ -560,7 +593,8 @@ export default function App() {
     });
   };
 
-  const handlePortOnePayment = async (planName: string, priceAmount: number, channelKey: string, providerType: 'eximbay_card' | 'eximbay_alipay' | 'kakaopay') => {
+  // 🍋 레몬스퀴지 모달 결제 오픈 함수 🍋
+  const handleLemonSqueezyPayment = (planName: string, variantId: string) => {
     if (!agreePayPolicy) {
       showAlert(lang === 'ko' ? "결제 및 정기 자동 결제 약관에 동의해 주세요." : "Please agree to the payment policy terms.");
       return;
@@ -572,113 +606,14 @@ export default function App() {
       return;
     }
 
-    if (typeof window === 'undefined' || !window.PortOne) {
-      showAlert("PortOne module failed to load.");
-      return;
-    }
+    sessionStorage.setItem('pendingPlanName', planName);
 
-    try {
-      const paymentId = `pay-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      
-      const paymentRequest: any = {
-        storeId: PORTONE_STORE_ID,
-        channelKey: channelKey,
-        paymentId: paymentId,
-        orderName: `YomiYomi ${planName} Premium`,
-        redirectUrl: window.location.origin, 
-        customer: {
-          fullName: currentUser.name || "User",
-          email: currentUser.email || "user@example.com",
-        },
-      };
-
-      if (providerType === 'kakaopay') {
-        paymentRequest.currency = "CURRENCY_KRW";
-        paymentRequest.totalAmount = await convertUsdToKrw(priceAmount);
-        paymentRequest.payMethod = "EASY_PAY";
-      } else {
-        const usdCents = Math.round(priceAmount * 100);
-        paymentRequest.currency = "CURRENCY_USD";
-        paymentRequest.totalAmount = usdCents;
-
-        if (providerType === 'eximbay_card') {
-          paymentRequest.payMethod = "CARD";
-        } else if (providerType === 'eximbay_alipay') {
-          paymentRequest.payMethod = "EASY_PAY";
-          paymentRequest.easyPay = { easyPayProvider: "ALIPAY" };
-        }
-
-        paymentRequest.products = [
-          {
-            id: `plan-${planName.replace(/\s+/g, '-').toLowerCase()}`,
-            name: `YomiYomi ${planName} Premium`,
-            amount: usdCents,
-            quantity: 1,
-          }
-        ];
-
-        const bypassProduct = [
-          {
-            name: `YomiYomi ${planName} Premium`,
-            quantity: "1",
-            amount: String(usdCents),
-            unitPrice: String(usdCents),
-            link: window.location.origin
-          }
-        ];
-
-        paymentRequest.bypass = {
-          eximbay_v2: { product: bypassProduct },
-          eximbay: { product: bypassProduct }
-        };
-      }
-
-      sessionStorage.setItem('pendingPlanName', planName);
-
-      const response = await window.PortOne.requestPayment(paymentRequest);
-
-      if (response && response.code !== undefined) {
-        showAlert(`결제 취소/실패: ${response.message || '결제가 완료되지 않았습니다.'}`);
-        return;
-      }
-
-      const firebaseUser = auth.currentUser;
-      const idToken = await firebaseUser?.getIdToken();
-
-      const verifyRes = await fetch('/api/payments/verify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
-          paymentId: paymentId,
-          planName: planName,
-          userId: currentUser.id
-        })
-      });
-      
-      const verifyData = await verifyRes.json().catch(() => null);
-
-      if (!verifyRes.ok || !verifyData || !verifyData.success) {
-        showAlert(`결제 검증 실패: ${verifyData?.message || '검증 처리 중 오류가 발생했습니다.'}`);
-        return;
-      }
-
-      setCurrentUser((prev) => prev ? {
-        ...prev,
-        isSubscribed: true,
-        subscriptionPlan: planName
-      } : null);
-
-      setIsPricingModalOpen(false);
-      setSelectedPlanForPay(null);
-      setAgreePayPolicy(false);
-      showAlert(`🎉 ${planName}${t('subscribeSuccessPost')}`);
-
-    } catch (error: any) {
-      console.error("PortOne Payment Error:", error);
-      showAlert("Payment process error: " + (error.message || JSON.stringify(error)));
+    const checkoutUrl = `https://yomiyomi-jp.lemonsqueezy.com/buy/${variantId}?embed=1&checkout[email]=${encodeURIComponent(currentUser.email || '')}`;
+    
+    if (window.LemonSqueezy) {
+      window.LemonSqueezy.Url.Open(checkoutUrl);
+    } else {
+      window.open(checkoutUrl, '_blank');
     }
   };
 
@@ -2096,7 +2031,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* 🌸 푸터 영역: 실제 발급받으신 통신판매업 신고번호 반영 🌸 */}
+      {/* 🌸 푸터 영역 🌸 */}
       <footer className="w-full py-6 flex flex-col items-center justify-center border-t border-slate-200 bg-white mt-12 space-y-2 px-4 text-center">
         <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs font-bold text-slate-600">
           <button onClick={() => openLegalDoc('terms')} className="hover:text-rose-600 hover:underline cursor-pointer">
@@ -2184,157 +2119,111 @@ export default function App() {
                   </div>
                 )}
 
-                {!selectedPlanForPay ? (
-                  <>
-                    <div className="text-center space-y-1">
-                      <span className="text-3xl block">👑</span>
-                      <h2 className="text-lg font-black text-slate-900">{t('premiumTitle')}</h2>
-                      <p className="text-xs sm:text-sm text-slate-500">{t('premiumDesc')}</p>
+                <div className="text-center space-y-1">
+                  <span className="text-3xl block">👑</span>
+                  <h2 className="text-lg font-black text-slate-900">{t('premiumTitle')}</h2>
+                  <p className="text-xs sm:text-sm text-slate-500">{t('premiumDesc')}</p>
+                </div>
+
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-left my-2 space-y-1">
+                  <label className="flex items-start space-x-2 text-xs sm:text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={agreePayPolicy}
+                      onChange={(e) => setAgreePayPolicy(e.target.checked)}
+                      className="mt-0.5 rounded text-rose-600 focus:ring-rose-400 shrink-0"
+                    />
+                    <span className="leading-tight text-xs sm:text-sm">
+                      {lang === 'ko' && (
+                        <>[필수] 결제 약관 및 <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">환불·구독해지 정책</button>에 동의합니다.</>
+                      )}
+                      {lang === 'en' && (
+                        <>[Required] I agree to the payment terms and the <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">Refund & Cancellation Policy</button>.</>
+                      )}
+                      {lang === 'zh-CN' && (
+                        <>[必填] 我同意支付条款及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消订阅政策</button>。</>
+                      )}
+                      {lang === 'zh-TW' && (
+                        <>[必填] 我同意支付條款及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消訂閱政策</button>。</>
+                      )}
+                      {lang === 'ja' && (
+                        <>[必須] 決済利用規約および<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">返金・解約ポリシー</button>に同意します。</>
+                      )}
+                    </span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {/* 1. 3개월 플랜 ($12.00) */}
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition">
+                    <div>
+                      <span className="text-xs font-bold text-slate-500 block mb-1">
+                        {t('plan3m')}
+                      </span>
+                      <div className="text-base font-black text-slate-900 mb-1">$12.00 USD</div>
+                      <span className="text-xs text-slate-400">
+                        {t('perMonth3')}
+                      </span>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {/* 1. 3개월 플랜 ($12.00) */}
-                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition">
-                        <div>
-                          <span className="text-xs font-bold text-slate-500 block mb-1">
-                            {t('plan3m')}
-                          </span>
-                          <div className="text-base font-black text-slate-900 mb-1">{t('price3m')} USD</div>
-                          <span className="text-xs text-slate-400">
-                            {t('perMonth3')}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => setSelectedPlanForPay({ planName: t('plan3m'), priceAmount: 12.00 })}
-                          className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
-                        >
-                          {t('subscribePlan')}
-                        </button>
-                      </div>
-
-                      {/* 2. 1년 플랜 ($38.40) */}
-                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition relative">
-                        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                          {t('off20')}
-                        </span>
-                        <div>
-                          <span className="text-xs font-bold text-slate-500 block mb-1">
-                            {t('plan1y')}
-                          </span>
-                          <div className="text-base font-black text-slate-900 mb-1">{t('price1y')} USD</div>
-                          <span className="text-xs text-amber-700 font-semibold">
-                            {t('perMonth12')}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => setSelectedPlanForPay({ planName: t('plan1y'), priceAmount: 38.40 })}
-                          className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
-                        >
-                          {t('subscribePlan')}
-                        </button>
-                      </div>
-
-                      {/* 3. 평생 이용권 ($45.00) */}
-                      <div className="p-4 bg-rose-50/80 border border-rose-300 rounded-2xl flex flex-col justify-between text-center relative shadow-xs">
-                        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                          {t('bestTag')}
-                        </span>
-                        <div>
-                          <span className="text-xs font-bold text-rose-700 block mb-1">
-                            {t('planLifetime')}
-                          </span>
-                          <div className="text-base font-black text-rose-900 mb-1">{t('priceLifetime')} USD</div>
-                          <span className="text-xs text-rose-600 font-bold">
-                            {t('unlimitedText')}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => setSelectedPlanForPay({ planName: t('planLifetime'), priceAmount: 45.00 })}
-                          className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
-                        >
-                          {t('subscribePlan')}
-                        </button>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-slate-400 text-center">
-                      {t('pricingSubNotice')}
-                    </p>
-                  </>
-                ) : (
-                  <div className="space-y-4 py-2 text-center">
                     <button
-                      onClick={() => { setSelectedPlanForPay(null); setAgreePayPolicy(false); }}
-                      className="text-xs sm:text-sm text-slate-400 hover:text-slate-600 font-bold flex items-center gap-1 mx-auto cursor-pointer"
+                      disabled={!agreePayPolicy}
+                      onClick={() => handleLemonSqueezyPayment(t('plan3m'), import.meta.env.VITE_LEMON_VARIANT_3MONTH || '1320112')}
+                      className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
-                      ◀ {t('reselectPlan')}
+                      {t('subscribePlan')}
                     </button>
-
-                    <div className="space-y-1">
-                      <span className="text-3xl block">💳</span>
-                      <h3 className="text-base font-black text-slate-900">
-                        {t('payTitlePre')}{selectedPlanForPay.planName}{t('payTitlePost')}
-                      </h3>
-                      <p className="text-xs sm:text-sm text-rose-600 font-bold">
-                        {t('payAmountLabel')}${selectedPlanForPay.priceAmount} USD
-                      </p>
-                    </div>
-
-                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-left my-2 space-y-1">
-                      <label className="flex items-start space-x-2 text-xs sm:text-sm text-slate-700 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={agreePayPolicy}
-                          onChange={(e) => setAgreePayPolicy(e.target.checked)}
-                          className="mt-0.5 rounded text-rose-600 focus:ring-rose-400 shrink-0"
-                        />
-                        <span className="leading-tight text-xs sm:text-sm">
-                          {lang === 'ko' && (
-                            <>[필수] 결제 약관 및 <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">환불·구독해지 정책</button>에 동의합니다.</>
-                          )}
-                          {lang === 'en' && (
-                            <>[Required] I agree to the payment terms and the <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">Refund & Cancellation Policy</button>.</>
-                          )}
-                          {lang === 'zh-CN' && (
-                            <>[必填] 我同意支付条款及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消订阅政策</button>。</>
-                          )}
-                          {lang === 'zh-TW' && (
-                            <>[必填] 我同意支付條款及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消訂閱政策</button>。</>
-                          )}
-                          {lang === 'ja' && (
-                            <>[必須] 決済利用規約および<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">返金・解約ポリシー</button>に同意します。</>
-                          )}
-                        </span>
-                      </label>
-                    </div>
-
-                    <div className="space-y-2 max-w-xs mx-auto pt-1">
-                      <button
-                        disabled={!agreePayPolicy}
-                        onClick={() => handlePortOnePayment(selectedPlanForPay.planName, selectedPlanForPay.priceAmount, CHANNEL_KEY_EXIMBAY, 'eximbay_card')}
-                        className="w-full py-2.5 bg-sky-600 hover:bg-sky-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-2xs cursor-pointer"
-                      >
-                        <span className="text-base">💳</span> {lang === 'ko' ? '해외 신용카드 (Visa / Master)' : 'Credit Card (Visa / Master)'}
-                      </button>
-
-                      <button
-                        disabled={!agreePayPolicy}
-                        onClick={() => handlePortOnePayment(selectedPlanForPay.planName, selectedPlanForPay.priceAmount, CHANNEL_KEY_EXIMBAY, 'eximbay_alipay')}
-                        className="w-full py-2.5 bg-sky-500 hover:bg-sky-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-2xs cursor-pointer"
-                      >
-                        <span className="text-base">🔵</span> Alipay
-                      </button>
-
-                      <button
-                        disabled={!agreePayPolicy}
-                        onClick={() => handlePortOnePayment(selectedPlanForPay.planName, selectedPlanForPay.priceAmount, CHANNEL_KEY_KAKAOPAY, 'kakaopay')}
-                        className="w-full py-2.5 bg-amber-400 hover:bg-amber-500 disabled:bg-slate-300 disabled:cursor-not-allowed text-slate-900 font-bold text-xs sm:text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-2xs cursor-pointer"
-                      >
-                        <span className="text-base">🟡</span> Kakao Pay
-                      </button>
-                    </div>
                   </div>
-                )}
+
+                  {/* 2. 1년 플랜 ($38.40) */}
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition relative">
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      {t('off20')}
+                    </span>
+                    <div>
+                      <span className="text-xs font-bold text-slate-500 block mb-1">
+                        {t('plan1y')}
+                      </span>
+                      <div className="text-base font-black text-slate-900 mb-1">$38.40 USD</div>
+                      <span className="text-xs text-amber-700 font-semibold">
+                        {t('perMonth12')}
+                      </span>
+                    </div>
+                    <button
+                      disabled={!agreePayPolicy}
+                      onClick={() => handleLemonSqueezyPayment(t('plan1y'), import.meta.env.VITE_LEMON_VARIANT_1YEAR || '1320177')}
+                      className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
+                    >
+                      {t('subscribePlan')}
+                    </button>
+                  </div>
+
+                  {/* 3. 평생 이용권 ($45.00) */}
+                  <div className="p-4 bg-rose-50/80 border border-rose-300 rounded-2xl flex flex-col justify-between text-center relative shadow-xs">
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      {t('bestTag')}
+                    </span>
+                    <div>
+                      <span className="text-xs font-bold text-rose-700 block mb-1">
+                        {t('planLifetime')}
+                      </span>
+                      <div className="text-base font-black text-rose-900 mb-1">$45.00 USD</div>
+                      <span className="text-xs text-rose-600 font-bold">
+                        {t('unlimitedText')}
+                      </span>
+                    </div>
+                    <button
+                      disabled={!agreePayPolicy}
+                      onClick={() => handleLemonSqueezyPayment(t('planLifetime'), import.meta.env.VITE_LEMON_VARIANT_LIFETIME || '1320190')}
+                      className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
+                    >
+                      {t('subscribePlan')}
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-400 text-center">
+                  {t('pricingSubNotice')}
+                </p>
               </>
             )}
           </div>
