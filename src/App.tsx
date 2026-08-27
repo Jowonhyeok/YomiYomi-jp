@@ -77,7 +77,6 @@ export default function App() {
     setSpeakingText, setIsPricingModalOpen, setSelectedPlanForPay, showAlert, showConfirm, closeCustomModal
   } = useUIStore();
 
-  // 🌸 1번: 3개 카테고리별 독립적인 뜻 가리기 상태 관리 🌸
   const [hideWordMeanings, setHideWordMeanings] = useState(false);
   const [hideKanjiMeanings, setHideKanjiMeanings] = useState(false);
   const [hideGrammarMeanings, setHideGrammarMeanings] = useState(false);
@@ -444,6 +443,9 @@ export default function App() {
       await signInWithPopup(auth, googleProvider);
       setIsAuthModalOpen(false);
     } catch (err: any) {
+      if (err.code === 'auth/popup-closed-by-user') {
+        return;
+      }
       showAlert('Google Login failed: ' + err.message);
     }
   };
@@ -1512,6 +1514,7 @@ export default function App() {
                             </button>
                           </div>
 
+                          {/* 🌸 요미가나 및 번역 버튼 다국어 번역 키(modeYomigana, modeTranslate) 적용 🌸 */}
                           <div className="flex items-center space-x-1 border-l border-slate-200 pl-1.5">
                             <button
                               onClick={() => setReadingDisplayMode(readingDisplayMode === 'off' ? 'furigana' : 'off')}
@@ -1521,7 +1524,7 @@ export default function App() {
                                   : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
                               }`}
                             >
-                              요미가나 {readingDisplayMode !== 'off' ? 'On' : 'Off'}
+                              {t('modeYomigana')} {readingDisplayMode !== 'off' ? 'On' : 'Off'}
                             </button>
                             <button
                               onClick={() => setShowTranslation(!showTranslation)}
@@ -1531,7 +1534,7 @@ export default function App() {
                                   : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
                               }`}
                             >
-                              번역 {showTranslation ? 'On' : 'Off'}
+                              {t('modeTranslate')} {showTranslation ? 'On' : 'Off'}
                             </button>
                           </div>
                         </div>
@@ -1582,7 +1585,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* 📌 1. 핵심 단어 카드 테이블 & 독립된 뜻 가리기 버튼 */}
+                    {/* 📌 핵심 단어 카드 테이블 (뜻 가리기 버튼: 14px/text-sm 시원하게 확대) */}
                     {analysisResult.wordList && analysisResult.wordList.length > 0 && (
                       <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
                         <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-slate-100">
@@ -1601,7 +1604,7 @@ export default function App() {
 
                           <button
                             onClick={() => setHideWordMeanings(!hideWordMeanings)}
-                            className={`text-[10px] px-2.5 py-1 rounded-lg font-bold transition cursor-pointer shadow-2xs ${hideWordMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                            className={`text-sm px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideWordMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                           >
                             {hideWordMeanings ? t('showMeaning') : t('hideMeaning')}
                           </button>
@@ -1649,7 +1652,7 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* 🏮 2. 핵심 한자 카드 테이블 & 독립된 뜻 가리기 버튼 */}
+                    {/* 🏮 핵심 한자 카드 테이블 (뜻 가리기 버튼: 14px/text-sm 시원하게 확대) */}
                     {analysisResult.kanjiList && analysisResult.kanjiList.length > 0 && (
                       <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
                         <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-slate-100">
@@ -1668,7 +1671,7 @@ export default function App() {
 
                           <button
                             onClick={() => setHideKanjiMeanings(!hideKanjiMeanings)}
-                            className={`text-[10px] px-2.5 py-1 rounded-lg font-bold transition cursor-pointer shadow-2xs ${hideKanjiMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                            className={`text-sm px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideKanjiMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                           >
                             {hideKanjiMeanings ? t('showMeaning') : t('hideMeaning')}
                           </button>
@@ -1712,7 +1715,7 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* ⛩️ 3. 핵심 문법 카드 테이블 & 독립된 뜻 가리기 버튼 */}
+                    {/* ⛩️ 핵심 문법 카드 테이블 (뜻 가리기 버튼: 14px/text-sm 시원하게 확대) */}
                     {analysisResult.grammarList && analysisResult.grammarList.length > 0 && (
                       <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
                         <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-slate-100">
@@ -1731,7 +1734,7 @@ export default function App() {
 
                           <button
                             onClick={() => setHideGrammarMeanings(!hideGrammarMeanings)}
-                            className={`text-[10px] px-2.5 py-1 rounded-lg font-bold transition cursor-pointer shadow-2xs ${hideGrammarMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                            className={`text-sm px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideGrammarMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                           >
                             {hideGrammarMeanings ? t('showMeaning') : t('hideMeaning')}
                           </button>
@@ -2728,7 +2731,6 @@ export default function App() {
         currentLang={lang}
       />
 
-      {/* 🌸 전 세계 모든 언어 통합: 가독성, 글자 크기, 여백 스케일 대폭 개선 🌸 */}
       <style>{`
         :root {
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
@@ -2747,7 +2749,6 @@ export default function App() {
           font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
         }
 
-        /* 🌸 중국어(간체/번체) 폰트 획수 뭉침 방지 */
         html[lang="zh-CN"] body *:not(.app-logo-text):not(.app-logo-text *),
         html[lang="zh-TW"] body *:not(.app-logo-text):not(.app-logo-text *) {
           font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif !important;
