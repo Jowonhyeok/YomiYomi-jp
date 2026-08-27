@@ -13,7 +13,6 @@ export async function onRequestPost(context) {
   }
 
   const idToken = authHeader.split('Bearer ')[1];
-  // Cloudflare 전용 환경변수(env) 접근
   const firebaseApiKey = env.VITE_FIREBASE_API_KEY;
   const projectId = env.VITE_FIREBASE_PROJECT_ID || 'yomiyomi-jp';
 
@@ -68,7 +67,6 @@ export async function onRequestPost(context) {
       isSubscribed = false;
     }
 
-    // Cloudflare 요청 바디 파싱
     const body = await request.json().catch(() => ({}));
     const { text, targetLang = 'en', imageBase64 } = body;
     const MAX_INPUT_TEXT = 2500;
@@ -95,13 +93,14 @@ export async function onRequestPost(context) {
       });
     }
 
-    // Cloudflare 환경변수에서 GEMINI_API_KEY 읽기
     const apiKey = env.GEMINI_API_KEY || '';
     if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
 
     const genAI = new GoogleGenerativeAI(apiKey);
+    
+    // 🔥 gemini-3.5-flash-lite 모델 지정
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-3.5-flash-lite',
       generationConfig: { responseMimeType: 'application/json' }
     });
 
@@ -122,7 +121,7 @@ export async function onRequestPost(context) {
     promptText += '\n[Required JSON Schema Example]:\n{\n' +
       '  "isJapanese": true,\n' +
       '  "translatedText": "This is a student.",\n' +
-      '  "rubySentences": ["<ruby>私<rt>わたし</rt></ruby>は<ruby>学生<rt>がくせい</rt></ruby>です。"],\n' +
+      '  "rubySentences": ["<ruby>私<rt>わたし</rt></ruby>は<ruby>학생<rt>がくせい</rt></ruby>です。"],\n' +
       '  "kanjiList": [{"kanji": "私", "readings": "わたし", "meaning": {"ko": "나", "en": "I, me", "zh-CN": "我", "zh-TW": "我", "ja": "わたし"}}],\n' +
       '  "wordList": [{"word": "学生", "reading": "がくせい", "partOfSpeech": "명사", "meaning": {"ko": "학생", "en": "student", "zh-CN": "학생", "zh-TW": "學生", "ja": "がくせい"}, "jlpt": "N5"}],\n' +
       '  "grammarList": [{"grammar": "です", "explanation": {"ko": "~입니다", "en": "is/am/are", "zh-CN": "是", "zh-TW": "是", "ja": "〜です"}}]\n' +
@@ -138,7 +137,7 @@ export async function onRequestPost(context) {
     let cleanedJsonText = rawText.split('```json').join('').split('```').join('').trim();
     const parsedData = JSON.parse(cleanedJsonText);
 
-    // 횟수 업데이트
+    // 사용 횟수 업데이트
     await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
       method: 'PATCH',
       headers: { 
@@ -170,7 +169,6 @@ export async function onRequestPost(context) {
   }
 }
 
-// OPTIONS 통신(CORS) 대응
 export async function onRequestOptions() {
   return new Response(null, {
     status: 204,
