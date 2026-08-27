@@ -71,11 +71,16 @@ export default function App() {
     setDecks, setSelectedDeckId, setSearchKeyword, setQuizSelectedDeckIds, setQuizState 
   } = useDeckStore();
   const { 
-    activeTab, readingDisplayMode, hideMeanings, kanaTab, fontSize, fontFamily, speakingText,
+    activeTab, readingDisplayMode, kanaTab, fontSize, fontFamily, speakingText,
     isPricingModalOpen, selectedPlanForPay, customModal,
-    setActiveTab, setReadingDisplayMode, setHideMeanings, setKanaTab, setFontSize, setFontFamily,
+    setActiveTab, setReadingDisplayMode, setKanaTab, setFontSize, setFontFamily,
     setSpeakingText, setIsPricingModalOpen, setSelectedPlanForPay, showAlert, showConfirm, closeCustomModal
   } = useUIStore();
+
+  // 🌸 1번: 3개 카테고리별 독립적인 뜻 가리기 상태 관리 🌸
+  const [hideWordMeanings, setHideWordMeanings] = useState(false);
+  const [hideKanjiMeanings, setHideKanjiMeanings] = useState(false);
+  const [hideGrammarMeanings, setHideGrammarMeanings] = useState(false);
 
   const t = (key: string) => DICT[lang]?.[key] || DICT['en']?.[key] || DICT['ko']?.[key] || key;
 
@@ -1577,6 +1582,7 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* 📌 1. 핵심 단어 카드 테이블 & 독립된 뜻 가리기 버튼 */}
                     {analysisResult.wordList && analysisResult.wordList.length > 0 && (
                       <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
                         <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-slate-100">
@@ -1594,10 +1600,10 @@ export default function App() {
                           </div>
 
                           <button
-                            onClick={() => setHideMeanings(!hideMeanings)}
-                            className={`text-[10px] px-2 py-1 rounded-md font-bold transition cursor-pointer ${hideMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                            onClick={() => setHideWordMeanings(!hideWordMeanings)}
+                            className={`text-[10px] px-2.5 py-1 rounded-lg font-bold transition cursor-pointer shadow-2xs ${hideWordMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                           >
-                            {hideMeanings ? t('showMeaning') : t('hideMeaning')}
+                            {hideWordMeanings ? t('showMeaning') : t('hideMeaning')}
                           </button>
                         </div>
 
@@ -1627,7 +1633,7 @@ export default function App() {
                               </p>
                               <p className="text-xs sm:text-sm mt-1.5">
                                 {t('meaning')}: {' '}
-                                <span className={hideMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'font-bold text-slate-800'}>
+                                <span className={hideWordMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'font-bold text-slate-800'}>
                                   {getLocalizedText(word.meaning, lang)}
                                 </span>
                               </p>
@@ -1643,6 +1649,7 @@ export default function App() {
                       </div>
                     )}
 
+                    {/* 🏮 2. 핵심 한자 카드 테이블 & 독립된 뜻 가리기 버튼 */}
                     {analysisResult.kanjiList && analysisResult.kanjiList.length > 0 && (
                       <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
                         <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-slate-100">
@@ -1658,6 +1665,13 @@ export default function App() {
                               ))}
                             </select>
                           </div>
+
+                          <button
+                            onClick={() => setHideKanjiMeanings(!hideKanjiMeanings)}
+                            className={`text-[10px] px-2.5 py-1 rounded-lg font-bold transition cursor-pointer shadow-2xs ${hideKanjiMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                          >
+                            {hideKanjiMeanings ? t('showMeaning') : t('hideMeaning')}
+                          </button>
                         </div>
 
                         <CardCarousel
@@ -1682,7 +1696,7 @@ export default function App() {
                               <span className="text-sm text-rose-600 font-bold block">{k.readings}</span>
                               <span className="text-xs sm:text-sm block mt-1.5">
                                 {t('meaning')}: {' '}
-                                <span className={hideMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'font-semibold text-slate-800'}>
+                                <span className={hideKanjiMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'font-semibold text-slate-800'}>
                                   {getLocalizedText(k.meaning, lang)}
                                 </span>
                               </span>
@@ -1698,6 +1712,7 @@ export default function App() {
                       </div>
                     )}
 
+                    {/* ⛩️ 3. 핵심 문법 카드 테이블 & 독립된 뜻 가리기 버튼 */}
                     {analysisResult.grammarList && analysisResult.grammarList.length > 0 && (
                       <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
                         <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-slate-100">
@@ -1713,6 +1728,13 @@ export default function App() {
                               ))}
                             </select>
                           </div>
+
+                          <button
+                            onClick={() => setHideGrammarMeanings(!hideGrammarMeanings)}
+                            className={`text-[10px] px-2.5 py-1 rounded-lg font-bold transition cursor-pointer shadow-2xs ${hideGrammarMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                          >
+                            {hideGrammarMeanings ? t('showMeaning') : t('hideMeaning')}
+                          </button>
                         </div>
 
                         <CardCarousel
@@ -1725,7 +1747,7 @@ export default function App() {
                                 {g.grammar}
                               </span>
                               <p className="text-xs sm:text-sm leading-relaxed font-medium mb-3">
-                                <span className={hideMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'text-slate-800'}>
+                                <span className={hideGrammarMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'text-slate-800'}>
                                   {getLocalizedText(g.explanation, lang)}
                                 </span>
                               </p>
