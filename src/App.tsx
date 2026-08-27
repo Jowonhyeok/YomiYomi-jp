@@ -79,6 +79,27 @@ export default function App() {
 
   const t = (key: string) => DICT[lang]?.[key] || DICT['en']?.[key] || DICT['ko']?.[key] || key;
 
+  // 🌐 4번: 브라우저 언어 자동 감지 로직 (최초 진입 시)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const savedLang = localStorage.getItem('user_lang') as Lang;
+    if (savedLang) {
+      setLang(savedLang);
+      return;
+    }
+
+    const browserLang = navigator.language || (navigator as any).userLanguage || '';
+    if (browserLang.startsWith('zh')) {
+      setLang(browserLang.includes('TW') || browserLang.includes('HK') ? 'zh-TW' : 'zh-CN');
+    } else if (browserLang.startsWith('ko')) {
+      setLang('ko');
+    } else if (browserLang.startsWith('ja')) {
+      setLang('ja');
+    } else {
+      setLang('zh-CN'); // 메인 타깃 중국어 기본 설정
+    }
+  }, [setLang]);
+
   const getSignupEmailNotice = (userLang: Lang) => {
     switch (userLang) {
       case 'ko':
@@ -202,6 +223,9 @@ export default function App() {
 
   const handleLanguageChange = (newLang: Lang) => {
     setLang(newLang);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('user_lang', newLang);
+    }
     if (currentUser && db && db.app) {
       const userDocRef = doc(db, 'users', currentUser.id);
       setDoc(userDocRef, { lang: newLang }, { merge: true }).catch(() => {});
@@ -320,7 +344,6 @@ export default function App() {
         return () => unsubscribeSnapshot();
       } else {
         setCurrentUser(null);
-        setLang('en');
         try {
           const saved = localStorage.getItem('koto_decks');
           if (saved) {
@@ -430,7 +453,6 @@ export default function App() {
       } finally {
         setCurrentUser(null);
         setDecks([DEFAULT_DECK_DATA]);
-        setLang('en');
         setIsSettingsModalOpen(false);
       }
     });
@@ -515,7 +537,6 @@ export default function App() {
         setIsSettingsModalOpen(false);
         setDecks([DEFAULT_DECK_DATA]);
         localStorage.removeItem('koto_decks');
-        setLang('en');
         showAlert(t('deleteAccountSuccess'));
 
       } catch (err: any) {
@@ -608,17 +629,13 @@ export default function App() {
 
       sessionStorage.setItem('pendingPlanName', planName);
 
-      // 🌸 포트원 결제창 호출 🌸
       const response = await window.PortOne.requestPayment(paymentRequest);
 
-      // 🌸 [포트원 V2 결제 응답 수신 정돈] 🌸
-      // response가 명시적으로 존재하고 code 속성이 있을 때만 취소/실패 건 처리
       if (response && response.code !== undefined) {
         showAlert(`결제 취소/실패: ${response.message || '결제가 완료되지 않았습니다.'}`);
         return;
       }
 
-      // 백엔드 검증 API 호출
       const firebaseUser = auth.currentUser;
       const idToken = await firebaseUser?.getIdToken();
 
@@ -642,7 +659,6 @@ export default function App() {
         return;
       }
 
-      // 상태 업데이트
       setCurrentUser((prev) => prev ? {
         ...prev,
         isSubscribed: true,
@@ -2064,6 +2080,7 @@ export default function App() {
         </div>
       </div>
 
+      {/* 5번: 푸터 개인정보 최소화 & 약관 정돈 */}
       <footer className="w-full py-6 flex flex-col items-center justify-center border-t border-slate-200 bg-white mt-12 space-y-2 px-4 text-center">
         <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs font-bold text-slate-600">
           <button onClick={() => openLegalDoc('terms')} className="hover:text-rose-600 hover:underline cursor-pointer">
@@ -2082,13 +2099,8 @@ export default function App() {
         <div className="text-[11px] text-slate-500 space-y-1 max-w-2xl leading-relaxed">
           <p>
             {lang === 'ko'
-              ? '상호명: YomiYomi | 대표자: 조원혁 | 사업자등록번호: 588-26-01979 | 통신판매업신고: 신고 예정 (발급 후 업데이트)'
-              : 'Company: YomiYomi | CEO: Won-hyeok Cho | Business ID: 588-26-01979 | E-Commerce Permit: Pending'}
-          </p>
-          <p>
-            {lang === 'ko'
-              ? '주소: 순천시 둑실5길 25 | 고객센터: contact.yomiyomi@gmail.com'
-              : 'Address: 25 Duksil 5-gil, Suncheon-si, Republic of Korea | Support: contact.yomiyomi@gmail.com'}
+              ? '상호명: YomiYomi | 고객지원: support@yomiyomi-jp.com | 사업자등록번호: 588-26-01979 | 통신판매업신고: 제 2026-전남순천-0000 호'
+              : 'Company: YomiYomi | Support: support@yomiyomi-jp.com | Business ID: 588-26-01979'}
           </p>
         </div>
 
@@ -2696,6 +2708,7 @@ export default function App() {
         currentLang={lang}
       />
 
+      {/* 1번: 중국어 폰트 크기, 줄간격, 자간 규격 최적화 CSS */}
       <style>{`
         :root {
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
@@ -2708,9 +2721,19 @@ export default function App() {
           font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
         }
 
+        /* 🌸 중국어(간체/번체) 폰트 가독성 및 자간/줄간격 규격 재조정 🌸 */
         html[lang="zh-CN"] body *:not(.app-logo-text):not(.app-logo-text *),
         html[lang="zh-TW"] body *:not(.app-logo-text):not(.app-logo-text *) {
           font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif !important;
+          line-height: 1.65 !important;
+          letter-spacing: 0.015em !important;
+        }
+
+        html[lang="zh-CN"] .note-content-area,
+        html[lang="zh-TW"] .note-content-area {
+          font-size: 1.05em !important;
+          line-height: 1.8 !important;
+          letter-spacing: 0.02em !important;
         }
 
         .note-content-area, .note-content-area * {
