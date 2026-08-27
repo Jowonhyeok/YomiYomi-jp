@@ -3,7 +3,6 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  // 1. Authorization 헤더 검증
   const authHeader = request.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'UNAUTHORIZED', message: '로그인이 필요합니다.' }), {
@@ -97,8 +96,6 @@ export async function onRequestPost(context) {
     if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    
-    // 🔥 gemini-3.5-flash-lite 모델 지정
     const model = genAI.getGenerativeModel({
       model: 'gemini-3.5-flash-lite',
       generationConfig: { responseMimeType: 'application/json' }
@@ -113,7 +110,8 @@ export async function onRequestPost(context) {
     let promptText = 'You are a professional Japanese language tutor. Analyze the following Japanese input and respond strictly in valid JSON format.\n';
     promptText += 'CRITICAL INSTRUCTIONS:\n';
     promptText += '1. "translatedText" MUST be a SINGLE plain string containing the full natural translation of the entire input text in the target language: "' + targetLang + '" (' + langGuide + '). Do NOT make it an object.\n';
-    promptText += '2. For "meaning" and "explanation" fields inside lists, provide translations as a multi-language object.\n\n';
+    promptText += '2. "partOfSpeech" inside "wordList" MUST ALWAYS be a standardized English category code: "noun", "verb", "adjective", "adverb", "particle", "conjunction", "auxiliary verb", "expression", "prefix", or "suffix". NEVER use Korean, Chinese, or Japanese in partOfSpeech.\n';
+    promptText += '3. For "meaning" and "explanation" fields inside lists, provide translations as a multi-language object.\n\n';
 
     if (text) promptText += '[Input Text]: "' + text + '"\n';
     if (imageBase64) promptText += '[Instruction]: Extract and analyze the Japanese text from the attached image.\n';
@@ -121,9 +119,9 @@ export async function onRequestPost(context) {
     promptText += '\n[Required JSON Schema Example]:\n{\n' +
       '  "isJapanese": true,\n' +
       '  "translatedText": "This is a student.",\n' +
-      '  "rubySentences": ["<ruby>私<rt>わたし</rt></ruby>は<ruby>학생<rt>がくせい</rt></ruby>です。"],\n' +
+      '  "rubySentences": ["<ruby>私<rt>わたし</rt></ruby>は<ruby>学生<rt>がくせい</rt></ruby>です。"],\n' +
       '  "kanjiList": [{"kanji": "私", "readings": "わたし", "meaning": {"ko": "나", "en": "I, me", "zh-CN": "我", "zh-TW": "我", "ja": "わたし"}}],\n' +
-      '  "wordList": [{"word": "学生", "reading": "がくせい", "partOfSpeech": "명사", "meaning": {"ko": "학생", "en": "student", "zh-CN": "학생", "zh-TW": "學生", "ja": "がくせい"}, "jlpt": "N5"}],\n' +
+      '  "wordList": [{"word": "学生", "reading": "がくせい", "partOfSpeech": "noun", "meaning": {"ko": "학생", "en": "student", "zh-CN": "学生", "zh-TW": "學生", "ja": "がくせい"}, "jlpt": "N5"}],\n' +
       '  "grammarList": [{"grammar": "です", "explanation": {"ko": "~입니다", "en": "is/am/are", "zh-CN": "是", "zh-TW": "是", "ja": "〜です"}}]\n' +
       '}';
 
@@ -137,7 +135,6 @@ export async function onRequestPost(context) {
     let cleanedJsonText = rawText.split('```json').join('').split('```').join('').trim();
     const parsedData = JSON.parse(cleanedJsonText);
 
-    // 사용 횟수 업데이트
     await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
       method: 'PATCH',
       headers: { 

@@ -34,46 +34,64 @@ export async function convertUsdToKrw(usdAmount: number): Promise<number> {
 
 export function getLocalizedPOS(pos: string, lang: Lang): string {
   if (!pos || typeof pos !== 'string') return '';
-  const rawPos = pos.trim();
+  const rawPos = pos.trim().toLowerCase();
 
+  // 품사 표준 매핑 사전
   const posDict: Record<string, Record<Lang, string>> = {
-    '명사': { ko: '명사', en: 'Noun', 'zh-CN': '名词', 'zh-TW': '名詞', ja: '名詞' },
-    '대명사': { ko: '대명사', en: 'Pronoun', 'zh-CN': '代词', 'zh-TW': '代詞', ja: '代名詞' },
-    '동사': { ko: '동사', en: 'Verb', 'zh-CN': '动词', 'zh-TW': '動詞', ja: '動詞' },
-    '형용사': { ko: '형용사', en: 'Adjective', 'zh-CN': '形容词', 'zh-TW': '形容詞', ja: '形容詞' },
-    '부사': { ko: '부사', en: 'Adverb', 'zh-CN': '副词', 'zh-TW': '副詞', ja: '副詞' },
-    '한자': { ko: '한자', en: 'Kanji', 'zh-CN': '汉字', 'zh-TW': '漢字', ja: '漢字' },
-    '문법': { ko: '문법', en: 'Grammar', 'zh-CN': '语法', 'zh-TW': '文法', ja: '文法' },
-    '감탄사': { ko: '감탄사', en: 'Interjection', 'zh-CN': '感叹词', 'zh-TW': '感嘆詞', ja: '感動詞' },
-    'POV': { ko: '감탄사', en: 'Interjection', 'zh-CN': '感叹词', 'zh-TW': '感嘆詞', ja: '感動詞' },
-    '조사': { ko: '조사', en: 'Particle', 'zh-CN': '助词', 'zh-TW': '助詞', ja: '助詞' },
-    '접속사': { ko: '접속사', en: 'Conjunction', 'zh-CN': '连词', 'zh-TW': '連接詞', ja: '接続詞' },
-    '연체사': { ko: '연체사', en: 'Adnominal', 'zh-CN': '连体词', 'zh-TW': '連體詞', ja: '連体詞' },
-    '기타': { ko: '기타', en: 'Other', 'zh-CN': '其他', 'zh-TW': 'other', ja: 'その他' }
+    noun: { ko: '명사', en: 'Noun', 'zh-CN': '名词', 'zh-TW': '名詞', ja: '名詞' },
+    pronoun: { ko: '대명사', en: 'Pronoun', 'zh-CN': '代词', 'zh-TW': '代詞', ja: '代名詞' },
+    verb: { ko: '동사', en: 'Verb', 'zh-CN': '动词', 'zh-TW': '動詞', ja: '動詞' },
+    adjective: { ko: '형용사', en: 'Adjective', 'zh-CN': '形容词', 'zh-TW': '形容詞', ja: '形容詞' },
+    adverb: { ko: '부사', en: 'Adverb', 'zh-CN': '副词', 'zh-TW': '副詞', ja: '副詞' },
+    particle: { ko: '조사', en: 'Particle', 'zh-CN': '助词', 'zh-TW': '助詞', ja: '助詞' },
+    conjunction: { ko: '접속사', en: 'Conjunction', 'zh-CN': '连词', 'zh-TW': '連詞', ja: '接続詞' },
+    auxiliary: { ko: '조동사', en: 'Auxiliary Verb', 'zh-CN': '助动词', 'zh-TW': '助動詞', ja: '助動詞' },
+    interjection: { ko: '감탄사', en: 'Interjection', 'zh-CN': '感叹词', 'zh-TW': '感嘆詞', ja: '感動詞' },
+    adnominal: { ko: '연체사', en: 'Adnominal', 'zh-CN': '连体词', 'zh-TW': '連體詞', ja: '連体詞' },
+    expression: { ko: '표현/구문', en: 'Expression', 'zh-CN': '短语/表达', 'zh-TW': '短語/表達', ja: '表現/句' },
+    prefix: { ko: '접두사', en: 'Prefix', 'zh-CN': '前缀', 'zh-TW': '前綴', ja: '接頭辞' },
+    suffix: { ko: '접미사', en: 'Suffix', 'zh-CN': '后缀', 'zh-TW': '後綴', ja: '接尾辞' },
+    kanji: { ko: '한자', en: 'Kanji', 'zh-CN': '汉字', 'zh-TW': '漢字', ja: '漢字' },
+    grammar: { ko: '문법', en: 'Grammar', 'zh-CN': '语法', 'zh-TW': '文法', ja: '文法' },
+    other: { ko: '기타', en: 'Other', 'zh-CN': '其他', 'zh-TW': '其他', ja: 'その他' }
   };
 
-  const tokens = rawPos.split(/([\/,\s]+)/);
-  const localizedTokens = tokens.map(token => {
-    const trimmed = token.trim();
-    if (!trimmed) return token;
-    
-    for (const key in posDict) {
-      const item = posDict[key];
-      if (
-        key === trimmed || 
-        item.ko === trimmed || 
-        item.en.toLowerCase() === trimmed.toLowerCase() || 
-        item['zh-CN'] === trimmed || 
-        item['zh-TW'] === trimmed || 
-        item.ja === trimmed
-      ) {
-        return item[lang] || item['en'];
-      }
-    }
-    return trimmed;
-  });
+  // 키워드 기반 스마트 카테고리 감지 (AI가 한글/중국어/영어 혼용 텍스트를 내놓아도 방어)
+  let matchedKey = 'other';
 
-  return localizedTokens.join('');
+  if (rawPos.includes('noun') || rawPos.includes('명사') || rawPos.includes('名詞') || rawPos.includes('名词')) {
+    matchedKey = 'noun';
+  } else if (rawPos.includes('pronoun') || rawPos.includes('대명사') || rawPos.includes('代词') || rawPos.includes('代詞') || rawPos.includes('代名詞')) {
+    matchedKey = 'pronoun';
+  } else if (rawPos.includes('verb') || rawPos.includes('동사') || rawPos.includes('動詞') || rawPos.includes('动词')) {
+    matchedKey = 'verb';
+  } else if (rawPos.includes('adj') || rawPos.includes('형용사') || rawPos.includes('形容')) {
+    matchedKey = 'adjective';
+  } else if (rawPos.includes('adv') || rawPos.includes('부사') || rawPos.includes('副')) {
+    matchedKey = 'adverb';
+  } else if (rawPos.includes('particle') || rawPos.includes('조사') || rawPos.includes('助詞') || rawPos.includes('助词')) {
+    matchedKey = 'particle';
+  } else if (rawPos.includes('conj') || rawPos.includes('접속사') || rawPos.includes('接続') || rawPos.includes('连词') || rawPos.includes('連詞')) {
+    matchedKey = 'conjunction';
+  } else if (rawPos.includes('auxiliary') || rawPos.includes('조동사') || rawPos.includes('助動') || rawPos.includes('助动')) {
+    matchedKey = 'auxiliary';
+  } else if (rawPos.includes('interjection') || rawPos.includes('감탄사') || rawPos.includes('pov') || rawPos.includes('感叹') || rawPos.includes('感嘆') || rawPos.includes('感動')) {
+    matchedKey = 'interjection';
+  } else if (rawPos.includes('adnominal') || rawPos.includes('연체사') || rawPos.includes('連体') || rawPos.includes('连体') || rawPos.includes('連體')) {
+    matchedKey = 'adnominal';
+  } else if (rawPos.includes('expression') || rawPos.includes('구문') || rawPos.includes('표현') || rawPos.includes('句') || rawPos.includes('表达') || rawPos.includes('表達') || rawPos.includes('短语') || rawPos.includes('短語')) {
+    matchedKey = 'expression';
+  } else if (rawPos.includes('prefix') || rawPos.includes('접두사') || rawPos.includes('接頭') || rawPos.includes('前缀') || rawPos.includes('前綴')) {
+    matchedKey = 'prefix';
+  } else if (rawPos.includes('suffix') || rawPos.includes('접미사') || rawPos.includes('接尾') || rawPos.includes('后缀') || rawPos.includes('後綴')) {
+    matchedKey = 'suffix';
+  } else if (rawPos.includes('kanji') || rawPos.includes('한자') || rawPos.includes('漢字') || rawPos.includes('汉字')) {
+    matchedKey = 'kanji';
+  } else if (rawPos.includes('grammar') || rawPos.includes('문법') || rawPos.includes('文法') || rawPos.includes('语法')) {
+    matchedKey = 'grammar';
+  }
+
+  return posDict[matchedKey]?.[lang] || posDict[matchedKey]?.['en'] || pos;
 }
 
 export function getLocalizedText(val: MultilingualText | undefined, lang: Lang): string {
