@@ -150,7 +150,7 @@ export default function App() {
                     setSelectedPlanForPay(null);
                     setAgreePayPolicy(false);
                     sessionStorage.removeItem('pendingPlanName');
-                    showAlert(`🎉 ${planName}${t('subscribeSuccessPost')}`);
+                    showAlert(`🎉 ${planName} 이용권 구매가 완료되었습니다!`);
                   } else {
                     showAlert(`결제 승인 처리 중 에러: ${verifyData?.message || '알 수 없는 오류'}`);
                   }
@@ -323,17 +323,14 @@ export default function App() {
             const isToday = data.lastAnalyzeDate === today;
 
             let isSubscribedActive = data.isSubscribed || false;
-            let cancelAtPeriodEnd = data.cancelAtPeriodEnd || false;
 
             if (data.subscriptionEndDate) {
               const endDate = new Date(data.subscriptionEndDate);
               const now = new Date();
               if (now > endDate) {
                 isSubscribedActive = false;
-                cancelAtPeriodEnd = false;
                 setDoc(userDocRef, { 
                   isSubscribed: false, 
-                  cancelAtPeriodEnd: false, 
                   subscriptionPlan: 'Free' 
                 }, { merge: true }).catch(() => {});
               }
@@ -350,7 +347,6 @@ export default function App() {
               isSubscribed: isSubscribedActive,
               subscriptionPlan: isSubscribedActive ? (data.subscriptionPlan || 'Premium') : 'Free',
               subscriptionEndDate: data.subscriptionEndDate || '',
-              cancelAtPeriodEnd: cancelAtPeriodEnd,
               lastAnalyzeDate: data.lastAnalyzeDate || today,
               dailyAnalyzeCount: isToday ? (data.dailyAnalyzeCount || 0) : 0,
               lang: data.lang || 'en'
@@ -497,48 +493,6 @@ export default function App() {
     });
   };
 
-  const handleCancelSubscription = () => {
-    const confirmMsg = lang === 'ko' 
-      ? "구독 해지 및 환불을 신청하시겠습니까?" 
-      : "Are you sure you want to request subscription cancellation and refund?";
-
-    showConfirm(confirmMsg, async () => {
-      if (!currentUser || !auth.currentUser) return;
-      try {
-        const idToken = await auth.currentUser.getIdToken();
-        const res = await fetch('/api/payments/refund', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          }
-        });
-
-        const data = await res.json().catch(() => null);
-
-        if (!res.ok) {
-          const detailMsg = data?.message || `API 통신 에러 (${res.status})`;
-          showAlert(`환불 처리 실패: ${detailMsg}`);
-          return;
-        }
-
-        if (data && data.success) {
-          showAlert(data.message || "🎉 환불 처리가 완료되었습니다.");
-          setCurrentUser(prev => prev ? { ...prev, isSubscribed: false, subscriptionPlan: 'Free' } : null);
-        } else if (data && (data.code === 'USAGE_EXISTS' || data.code === 'EXCEEDED_7_DAYS')) {
-          setCurrentUser(prev => prev ? { ...prev, cancelAtPeriodEnd: true } : null);
-          showAlert(data.message);
-        } else {
-          showAlert(`Error: ${data?.message || '환불 처리에 실패했습니다.'}`);
-        }
-
-        setIsSettingsModalOpen(false);
-      } catch (err: any) {
-        showAlert('환불 처리 중 문제 발생: ' + err.message);
-      }
-    });
-  };
-
   const handleDeleteAccount = () => {
     showConfirm(t('deleteAccountConfirm'), async () => {
       if (!currentUser || !auth.currentUser) return;
@@ -579,10 +533,10 @@ export default function App() {
     });
   };
 
-  // 🍋 레몬스퀴지 모달 결제 오픈 함수 (표준 URL 구조) 🍋
+  // 🍋 레몬스퀴지 모달 결제 오픈 함수 🍋
   const handleLemonSqueezyPayment = (planName: string, variantId: string) => {
     if (!agreePayPolicy) {
-      showAlert(lang === 'ko' ? "결제 및 정기 자동 결제 약관에 동의해 주세요." : "Please agree to the payment policy terms.");
+      showAlert(lang === 'ko' ? "결제 약관 및 이용 정책에 동의해 주세요." : "Please agree to the payment policy terms.");
       return;
     }
 
@@ -594,7 +548,6 @@ export default function App() {
 
     sessionStorage.setItem('pendingPlanName', planName);
 
-    // 레몬스퀴지 표준 체크아웃 팝업 URL
     const checkoutUrl = `https://app.lemonsqueezy.com/checkout/buy/${variantId}?embed=1&checkout[email]=${encodeURIComponent(currentUser.email || '')}`;
     
     if (window.LemonSqueezy) {
@@ -1816,7 +1769,7 @@ export default function App() {
                       className="mt-2 px-6 py-2.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition active:scale-95 cursor-pointer flex items-center gap-1.5"
                     >
                       <span>👑</span>
-                      <span>{t('subscribePlan')}</span>
+                      <span>{lang === 'ko' ? '이용권 구매하기' : 'Buy Membership'}</span>
                     </button>
                   </div>
                 ) : !quizState ? (
@@ -2030,7 +1983,7 @@ export default function App() {
           </button>
           <span className="text-slate-300">|</span>
           <button onClick={() => openLegalDoc('refund')} className="hover:text-rose-600 hover:underline cursor-pointer">
-            {lang === 'ko' ? '환불 및 취소 정책' : 'Refund Policy'}
+            {lang === 'ko' ? '환불 및 이용 정책' : 'Refund Policy'}
           </button>
         </div>
 
@@ -2050,7 +2003,7 @@ export default function App() {
         </p>
       </footer>
 
-      {/* 💳 결제 요금제 모달 💳 */}
+      {/* 💳 프리미엄 이용권 요금제 모달 💳 */}
       {isPricingModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-rose-100 relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
@@ -2065,16 +2018,16 @@ export default function App() {
               ✕
             </button>
 
-            {currentUser?.isSubscribed && !currentUser?.cancelAtPeriodEnd ? (
+            {currentUser?.isSubscribed ? (
               <div className="text-center py-6 space-y-3">
                 <span className="text-4xl block">👑</span>
                 <h2 className="text-lg font-black text-slate-900">
-                  {lang === 'ko' ? '현재 프리미엄 이용 중입니다' : 'Premium Plan Active'}
+                  {lang === 'ko' ? '현재 프리미엄 이용 중입니다' : 'Premium Active'}
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-sm mx-auto">
                   {lang === 'ko' ? '이미 무제한 서비스 혜택을 이용하고 계십니다.' : 'You are currently enjoying unlimited premium benefits.'}<br />
                   <strong className="text-slate-700 font-bold block mt-1">
-                    {lang === 'ko' ? '해지 및 환불 신청은 설정(⚙️) 메뉴에서 진행 가능합니다.' : 'Subscription cancellation and refunds can be managed in Account & Settings (⚙️).'}
+                    {lang === 'ko' ? '남은 이용 기간 확인 및 설정은 계정 메뉴(⚙️)에서 가능합니다.' : 'Check remaining days in Account & Settings (⚙️).'}
                   </strong>
                 </p>
                 <button
@@ -2084,26 +2037,15 @@ export default function App() {
                   }}
                   className="mt-2 px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                 >
-                  ⚙️ {lang === 'ko' ? '계정 및 구독 설정으로 이동' : 'Go to Account & Settings'}
+                  ⚙️ {lang === 'ko' ? '계정 및 이용 정보로 이동' : 'Go to Account & Settings'}
                 </button>
               </div>
             ) : (
               <>
-                {currentUser?.isSubscribed && currentUser?.cancelAtPeriodEnd && (
-                  <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-center space-y-2">
-                    <div className="text-xs sm:text-sm font-bold text-amber-900">
-                      ⚠️ {lang === 'ko' ? `현재 구독 해지 예약 상태입니다 (${currentUser.subscriptionEndDate} 만료)` : `Cancellation scheduled (Expires on ${currentUser.subscriptionEndDate})`}
-                    </div>
-                    <p className="text-xs text-amber-700">
-                      {lang === 'ko' ? '기존 구독 만료 후 아래 플랜에서 원하는 요금제로 재결제하실 수 있습니다.' : 'You can repurchase your desired plan anytime below after expiration.'}
-                    </p>
-                  </div>
-                )}
-
                 <div className="text-center space-y-1">
                   <span className="text-3xl block">👑</span>
-                  <h2 className="text-lg font-black text-slate-900">{t('premiumTitle')}</h2>
-                  <p className="text-xs sm:text-sm text-slate-500">{t('premiumDesc')}</p>
+                  <h2 className="text-lg font-black text-slate-900">{lang === 'ko' ? '프리미엄 이용권 구매' : 'Buy Premium Access'}</h2>
+                  <p className="text-xs sm:text-sm text-slate-500">{lang === 'ko' ? '한 번 결제로 정기 자동 결제 없이 안전하게 이용해보세요.' : 'One-time payment with no recurring charges.'}</p>
                 </div>
 
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-left my-2 space-y-1">
@@ -2116,94 +2058,94 @@ export default function App() {
                     />
                     <span className="leading-tight text-xs sm:text-sm">
                       {lang === 'ko' && (
-                        <>[필수] 결제 약관 및 <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">환불·구독해지 정책</button>에 동의합니다.</>
+                        <>[필수] 결제 약관 및 <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">환불·이용 정책</button>에 동의합니다.</>
                       )}
                       {lang === 'en' && (
-                        <>[Required] I agree to the payment terms and the <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">Refund & Cancellation Policy</button>.</>
+                        <>[Required] I agree to the payment terms and the <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">Refund Policy</button>.</>
                       )}
                       {lang === 'zh-CN' && (
-                        <>[必填] 我同意支付条款及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消订阅政策</button>。</>
+                        <>[必填] 我同意支付条款及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款政策</button>。</>
                       )}
                       {lang === 'zh-TW' && (
-                        <>[必填] 我同意支付條款及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款和取消訂閱政策</button>。</>
+                        <>[必填] 我同意支付條款及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款政策</button>。</>
                       )}
                       {lang === 'ja' && (
-                        <>[必須] 決済利用規約および<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">返金・解約ポリシー</button>に同意します。</>
+                        <>[必須] 決済利用規約および<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">返金ポリシー</button>に同意します。</>
                       )}
                     </span>
                   </label>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {/* 1. 3개월 플랜 ($12.00) */}
+                  {/* 1. 3개월 이용권 ($12.00) */}
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition">
                     <div>
                       <span className="text-xs font-bold text-slate-500 block mb-1">
-                        {t('plan3m')}
+                        {lang === 'ko' ? '3개월 이용권' : '3-Month Access'}
                       </span>
                       <div className="text-base font-black text-slate-900 mb-1">$12.00 USD</div>
                       <span className="text-xs text-slate-400">
-                        {t('perMonth3')}
+                        {lang === 'ko' ? '월 $4.00 상당' : '$4.00 / mo'}
                       </span>
                     </div>
                     <button
                       disabled={!agreePayPolicy}
-                      onClick={() => handleLemonSqueezyPayment(t('plan3m'), import.meta.env.VITE_LEMON_VARIANT_3MONTH || '1320112')}
+                      onClick={() => handleLemonSqueezyPayment('3개월 이용권', import.meta.env.VITE_LEMON_VARIANT_3MONTH || '1320112')}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
-                      {t('subscribePlan')}
+                      {lang === 'ko' ? '구매하기' : 'Buy Now'}
                     </button>
                   </div>
 
-                  {/* 2. 1년 플랜 ($38.40) */}
+                  {/* 2. 1년 이용권 ($38.40) */}
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition relative">
                     <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                      {t('off20')}
+                      20% OFF
                     </span>
                     <div>
                       <span className="text-xs font-bold text-slate-500 block mb-1">
-                        {t('plan1y')}
+                        {lang === 'ko' ? '1년 이용권' : '1-Year Access'}
                       </span>
                       <div className="text-base font-black text-slate-900 mb-1">$38.40 USD</div>
                       <span className="text-xs text-amber-700 font-semibold">
-                        {t('perMonth12')}
+                        {lang === 'ko' ? '월 $3.20 상당' : '$3.20 / mo'}
                       </span>
                     </div>
                     <button
                       disabled={!agreePayPolicy}
-                      onClick={() => handleLemonSqueezyPayment(t('plan1y'), import.meta.env.VITE_LEMON_VARIANT_1YEAR || '1320177')}
+                      onClick={() => handleLemonSqueezyPayment('1년 이용권', import.meta.env.VITE_LEMON_VARIANT_1YEAR || '1320177')}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
-                      {t('subscribePlan')}
+                      {lang === 'ko' ? '구매하기' : 'Buy Now'}
                     </button>
                   </div>
 
                   {/* 3. 평생 이용권 ($45.00) */}
                   <div className="p-4 bg-rose-50/80 border border-rose-300 rounded-2xl flex flex-col justify-between text-center relative shadow-xs">
                     <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                      {t('bestTag')}
+                      BEST
                     </span>
                     <div>
                       <span className="text-xs font-bold text-rose-700 block mb-1">
-                        {t('planLifetime')}
+                        {lang === 'ko' ? '평생 이용권' : 'Lifetime Pass'}
                       </span>
                       <div className="text-base font-black text-rose-900 mb-1">$45.00 USD</div>
                       <span className="text-xs text-rose-600 font-bold">
-                        {t('unlimitedText')}
+                        {lang === 'ko' ? '무제한 영구 이용' : 'Unlimited Forever'}
                       </span>
                     </div>
                     <button
                       disabled={!agreePayPolicy}
-                      onClick={() => handleLemonSqueezyPayment(t('planLifetime'), import.meta.env.VITE_LEMON_VARIANT_LIFETIME || '1320190')}
+                      onClick={() => handleLemonSqueezyPayment('평생 이용권', import.meta.env.VITE_LEMON_VARIANT_LIFETIME || '1320190')}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
-                      {t('subscribePlan')}
+                      {lang === 'ko' ? '구매하기' : 'Buy Now'}
                     </button>
                   </div>
                 </div>
 
                 <p className="text-xs text-slate-400 text-center">
-                  {t('pricingSubNotice')}
+                  {lang === 'ko' ? '모든 결제는 1회성 단발성 결제로 진행되며 자동 연장되지 않습니다.' : 'All purchases are single payments and will not auto-renew.'}
                 </p>
               </>
             )}
@@ -2520,29 +2462,29 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-1.5">
                     <span className="text-sm">👑</span>
-                    <span className="text-xs sm:text-sm font-bold text-slate-800">{t('premiumMembership')}</span>
+                    <span className="text-xs sm:text-sm font-bold text-slate-800">{lang === 'ko' ? '프리미엄 멤버십' : 'Premium Access'}</span>
                   </div>
                   <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
                     currentUser.isSubscribed 
-                      ? (currentUser.cancelAtPeriodEnd ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800')
+                      ? 'bg-emerald-100 text-emerald-800'
                       : 'bg-slate-200 text-slate-600'
                   }`}>
                     {currentUser.isSubscribed 
-                      ? (currentUser.cancelAtPeriodEnd ? (lang === 'ko' ? '해지 예약됨' : 'Cancellation Scheduled') : (lang === 'ko' ? '이용 중' : 'Active'))
+                      ? (lang === 'ko' ? '이용 중' : 'Active')
                       : (lang === 'ko' ? '무료 회원' : 'Free Plan')}
                   </span>
                 </div>
 
                 <p className="text-xs text-slate-500">
                   {currentUser.isSubscribed 
-                    ? (lang === 'ko' ? `현재 [${currentUser.subscriptionPlan || 'Premium'}] 플랜을 이용하고 있습니다.` : `Currently using [${currentUser.subscriptionPlan || 'Premium'}] Plan.`)
+                    ? (lang === 'ko' ? `현재 [${currentUser.subscriptionPlan || 'Premium'}] 이용권을 사용 중입니다.` : `Currently using [${currentUser.subscriptionPlan || 'Premium'}].`)
                     : t('freePlanUsing')}
                 </p>
 
                 {currentUser.isSubscribed && currentUser.subscriptionEndDate && (
                   <div className="pt-2 border-t border-slate-200/60 text-xs space-y-1">
                     <div className="flex justify-between items-center text-slate-600">
-                      <span>{currentUser.cancelAtPeriodEnd ? t('expDateLabel') : t('nextPayDateLabel')}</span>
+                      <span>{lang === 'ko' ? '이용 만료일:' : 'Expiration Date:'}</span>
                       <span className="font-bold text-slate-800">{currentUser.subscriptionEndDate}</span>
                     </div>
 
@@ -2552,19 +2494,6 @@ export default function App() {
                         {daysLeft}{t('daysLeftLabel')}
                       </span>
                     </div>
-                  </div>
-                )}
-
-                {currentUser.isSubscribed && (
-                  <div className="pt-2 border-t border-slate-200/60 flex justify-end">
-                    {!currentUser.cancelAtPeriodEnd && (
-                      <button
-                        onClick={handleCancelSubscription}
-                        className="text-xs text-rose-500 hover:text-rose-700 font-bold underline cursor-pointer"
-                      >
-                        {t('cancelSubscription')}
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
