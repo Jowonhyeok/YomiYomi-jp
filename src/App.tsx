@@ -539,20 +539,6 @@ export default function App() {
     });
   };
 
-  const handleResumeSubscription = async () => {
-    if (!currentUser) return;
-    try {
-      if (db && db.app) {
-        const userDocRef = doc(db, 'users', currentUser.id);
-        await setDoc(userDocRef, { cancelAtPeriodEnd: false }, { merge: true }).catch(() => {});
-      }
-      setCurrentUser(prev => prev ? { ...prev, cancelAtPeriodEnd: false } : null);
-      showAlert(lang === 'ko' ? "구독 해지 예약이 철회되었습니다. 정기 구독이 유지됩니다." : "Subscription renewal resumed successfully.");
-    } catch (err: any) {
-      showAlert("Error: " + err.message);
-    }
-  };
-
   const handleDeleteAccount = () => {
     showConfirm(t('deleteAccountConfirm'), async () => {
       if (!currentUser || !auth.currentUser) return;
@@ -593,7 +579,7 @@ export default function App() {
     });
   };
 
-  // 🍋 레몬스퀴지 모달 결제 오픈 함수 🍋
+  // 🍋 레몬스퀴지 모달 결제 오픈 함수 (표준 URL 구조) 🍋
   const handleLemonSqueezyPayment = (planName: string, variantId: string) => {
     if (!agreePayPolicy) {
       showAlert(lang === 'ko' ? "결제 및 정기 자동 결제 약관에 동의해 주세요." : "Please agree to the payment policy terms.");
@@ -608,7 +594,8 @@ export default function App() {
 
     sessionStorage.setItem('pendingPlanName', planName);
 
-    const checkoutUrl = `https://yomiyomi-jp.lemonsqueezy.com/buy/${variantId}?embed=1&checkout[email]=${encodeURIComponent(currentUser.email || '')}`;
+    // 레몬스퀴지 표준 체크아웃 팝업 URL
+    const checkoutUrl = `https://app.lemonsqueezy.com/checkout/buy/${variantId}?embed=1&checkout[email]=${encodeURIComponent(currentUser.email || '')}`;
     
     if (window.LemonSqueezy) {
       window.LemonSqueezy.Url.Open(checkoutUrl);
@@ -2108,14 +2095,8 @@ export default function App() {
                       ⚠️ {lang === 'ko' ? `현재 구독 해지 예약 상태입니다 (${currentUser.subscriptionEndDate} 만료)` : `Cancellation scheduled (Expires on ${currentUser.subscriptionEndDate})`}
                     </div>
                     <p className="text-xs text-amber-700">
-                      {lang === 'ko' ? '해지 예약을 철회하고 이용을 계속하시거나, 새 플랜으로 연장이 가능합니다.' : 'You can resume your subscription or switch plans anytime.'}
+                      {lang === 'ko' ? '기존 구독 만료 후 아래 플랜에서 원하는 요금제로 재결제하실 수 있습니다.' : 'You can repurchase your desired plan anytime below after expiration.'}
                     </p>
-                    <button
-                      onClick={handleResumeSubscription}
-                      className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-bold rounded-lg transition cursor-pointer"
-                    >
-                      ↺ {lang === 'ko' ? '구독 해지 철회 (정기 구독 유지)' : 'Resume Subscription'}
-                    </button>
                   </div>
                 )}
 
@@ -2576,14 +2557,7 @@ export default function App() {
 
                 {currentUser.isSubscribed && (
                   <div className="pt-2 border-t border-slate-200/60 flex justify-end">
-                    {currentUser.cancelAtPeriodEnd ? (
-                      <button
-                        onClick={handleResumeSubscription}
-                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition cursor-pointer"
-                      >
-                        ↺ {lang === 'ko' ? '구독 해지 철회 (정기 구독 유지)' : 'Resume Subscription'}
-                      </button>
-                    ) : (
+                    {!currentUser.cancelAtPeriodEnd && (
                       <button
                         onClick={handleCancelSubscription}
                         className="text-xs text-rose-500 hover:text-rose-700 font-bold underline cursor-pointer"
