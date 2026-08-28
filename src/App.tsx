@@ -46,7 +46,7 @@ declare global {
     LemonSqueezy?: {
       Url: {
         Open: (url: string) => void;
-        Close: () => void;
+        Close: (url: string) => void;
       };
       Setup: (options: {
         eventHandler: (event: { event: string; data?: any }) => void;
@@ -99,6 +99,7 @@ export default function App() {
   const [hideKanjiMeanings, setHideKanjiMeanings] = useState(false);
   const [hideGrammarMeanings, setHideGrammarMeanings] = useState(false);
 
+  // 🌸 다국어 번역 함수
   const t = (key: string) => DICT[lang]?.[key] || DICT['en']?.[key] || DICT['ko']?.[key] || key;
 
   useEffect(() => {
@@ -162,12 +163,12 @@ export default function App() {
                     setSelectedPlanForPay(null);
                     setAgreePayPolicy(false);
                     sessionStorage.removeItem('pendingPlanName');
-                    showAlert(`🎉 ${planName} 이용권 구매가 완료되었습니다!`);
+                    showAlert(`🎉 ${planName} ${t('paymentSuccessAlert')}`);
                   } else {
-                    showAlert(`결제 승인 처리 중 에러: ${verifyData?.message || '알 수 없는 오류'}`);
+                    showAlert(`${t('paymentApprovalError')}${verifyData?.message || 'Error'}`);
                   }
                 } catch (err: any) {
-                  showAlert('결제 검증 오류: ' + err.message);
+                  showAlert(`${t('paymentVerifyError')}${err.message}`);
                 }
               }
             }
@@ -175,23 +176,7 @@ export default function App() {
         });
       }
     }
-  }, [setCurrentUser, setIsPricingModalOpen, setSelectedPlanForPay, showAlert]);
-
-  const getSignupEmailNotice = (userLang: Lang) => {
-    switch (userLang) {
-      case 'ko':
-        return '🌸 회원가입이 완료되었습니다!\n입력하신 이메일로 인증 링크를 발송했습니다. 이메일함(스팸함 포함)을 확인하여 인증 완료 후 로그인해 주세요.';
-      case 'ja':
-        return '🌸 会員登録が完了しました！\nご入力いただいたメールアドレスに確認リンクを送信しました。メールボックス（迷惑メールフォルダ含む）をご確認のうえ、認証を完了してからログインしてください。';
-      case 'zh-CN':
-        return '🌸 注册成功！\n验证链接已发送至您的邮箱。请检查您的收件箱（包括垃圾邮件箱），完成验证后再进行登录。';
-      case 'zh-TW':
-        return '🌸 註冊成功！\n驗證連結已發送至您的信箱。請檢查您的收件箱（包含垃圾郵件箱），完成驗證後再進行登入。';
-      case 'en':
-      default:
-        return '🌸 Sign-up completed successfully!\nA verification link has been sent to your email. Please check your inbox (including spam folder) and verify your account before logging in.';
-    }
-  };
+  }, [setCurrentUser, setIsPricingModalOpen, setSelectedPlanForPay, showAlert, lang]);
 
   const [inputText, setInputText] = useState('');
   const [selectedImage, setSelectedImage] = useState<{ file: File; preview: string; mimeType: string; data: string } | null>(null);
@@ -408,22 +393,23 @@ export default function App() {
     }
   }, [decks, quizSelectedDeckIds, setQuizSelectedDeckIds]);
 
+  // 🌸 회원가입 / 로그인 제출 핸들러 (다국어 보완)
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authEmail.trim() || !authPassword.trim()) {
-      showAlert('Please enter your email and password.');
+      showAlert(t('enterEmailPasswordAlert'));
       return;
     }
 
     try {
       if (authMode === 'signup') {
         if (!authName.trim()) {
-          showAlert('Please enter your name/nickname.');
+          showAlert(t('enterNameAlert'));
           return;
         }
 
         if (!isSignupFormValid) {
-          showAlert('Please check and agree to all required terms.');
+          showAlert(t('agreeTermsRequiredAlert'));
           return;
         }
 
@@ -438,7 +424,7 @@ export default function App() {
         await sendEmailVerification(userCredential.user);
         await signOut(auth);
 
-        showAlert(getSignupEmailNotice(lang));
+        showAlert(t('signupSuccess'));
       } else {
         const userCredential = await signInWithEmailAndPassword(auth, authEmail, authPassword);
         if (!userCredential.user.emailVerified) {
@@ -454,18 +440,19 @@ export default function App() {
       setAgreeTerms(false);
       setAgreePrivacy(false);
     } catch (err: any) {
-      let userFriendlyMsg = 'An authentication error occurred.';
+      let userFriendlyMsg = t('authErrorOccurred');
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        userFriendlyMsg = 'Invalid email address or password. Please try again.';
+        userFriendlyMsg = t('invalidEmailPasswordFormat');
       } else if (err.code === 'auth/email-already-in-use') {
         userFriendlyMsg = t('emailAlreadyInUse');
       } else if (err.code === 'auth/invalid-email') {
-        userFriendlyMsg = 'Invalid email address format.';
+        userFriendlyMsg = t('invalidEmailFormat');
       }
       showAlert(userFriendlyMsg);
     }
   };
 
+  // 🌸 구글 로그인 핸들러 (다국어 보완)
   const handleGoogleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
@@ -474,7 +461,7 @@ export default function App() {
       if (err.code === 'auth/popup-closed-by-user') {
         return;
       }
-      showAlert('Google Login failed: ' + err.message);
+      showAlert(t('googleLoginFailedAlert') + err.message);
     }
   };
 
@@ -492,6 +479,7 @@ export default function App() {
     });
   };
 
+  // 🌸 계정 삭제 핸들러 (다국어 보완)
   const handleDeleteAccount = () => {
     showConfirm(t('deleteAccountConfirm'), async () => {
       if (!currentUser || !auth.currentUser) return;
@@ -525,17 +513,18 @@ export default function App() {
           try { await signOut(auth); } catch {}
           setCurrentUser(null);
           setIsSettingsModalOpen(false);
-          showAlert('보안을 위해 재로그인이 필요합니다. 로그아웃 처리되었으니 다시 로그인하여 탈퇴를 시도해 주세요.');
+          showAlert(t('reloginRequiredForDelete'));
         } else {
-          showAlert('계정 삭제 실패: ' + (err.message || '알 수 없는 오류'));
+          showAlert(t('deleteAccountFailed') + (err.message || 'Error'));
         }
       }
     });
   };
 
+  // 🌸 레몬스퀴지 결제 핸들러 (다국어 보완)
   const handleLemonSqueezyPayment = (planName: string, checkoutUrlRaw: string) => {
     if (!agreePayPolicy) {
-      showAlert(lang === 'ko' ? "결제 약관 및 이용 정책에 동의해 주세요." : "Please agree to the payment policy terms.");
+      showAlert(t('agreePayPolicyRequired'));
       return;
     }
 
@@ -650,9 +639,10 @@ export default function App() {
     }
   };
 
+  // 🌸 음성 TTS 핸들러 (다국어 보완)
   const toggleSpeech = (text: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      showAlert('TTS Speech synthesis is not supported in this browser.');
+      showAlert(t('ttsNotSupported'));
       return;
     }
 
@@ -675,7 +665,7 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // 🌸 기기 ID(deviceId)를 포함하여 분석 요청 처리
+  // 🌸 분석 실행 핸들러 (모든 에러 알림 다국어 보완)
   const handleAnalyze = async () => {
     if (!currentUser) {
       showAlert(t('loginGateMsg'));
@@ -694,10 +684,8 @@ export default function App() {
     try {
       const imagePayload = selectedImage ? { mimeType: selectedImage.mimeType, data: selectedImage.data } : undefined;
       
-      // 기기 고유 ID 가져오기
       const deviceId = await getDeviceId();
 
-      // analyzeJapanese 함수에 deviceId 전달
       const result = await analyzeJapanese(inputText, lang, imagePayload, deviceId);
       setAnalysisResult(result);
       
@@ -717,17 +705,15 @@ export default function App() {
         showAlert(t('dailyLimitReached'));
         setIsPricingModalOpen(true);
       } else if (errMessage === "DEVICE_LIMIT_EXCEEDED") {
-        showAlert("해당 기기에서 오늘의 무료 분석 횟수(3회)를 모두 사용하셨습니다.");
-      } else if (errMessage === "FUP_LIMIT_EXCEEDED") {
-        setErrorMessage("⚠️ " + (lang === 'ko' ? "일일 최대 분석 제공량을 초과했습니다. 내일 다시 이용해 주세요." : "Daily usage limit exceeded. Please try again tomorrow."));
+        showAlert(t('deviceLimitAlert'));
       } else if (errMessage === "RATE_LIMIT_EXCEEDED") {
-        setErrorMessage("⚠️ Too many requests. Please wait a moment.");
+        setErrorMessage(t('tooManyRequestsAlert'));
       } else if (errMessage === "JAPANESE_ONLY") {
-        setErrorMessage("⚠️ Only Japanese sentences or images with Japanese text can be analyzed.");
+        setErrorMessage(t('japaneseOnlyAlert'));
       } else if (errMessage === "UNAUTHORIZED") {
-        setErrorMessage("⚠️ Session expired. Please log in again.");
+        setErrorMessage(t('sessionExpiredAlert'));
       } else {
-        setErrorMessage(`⚠️ ${errMessage || 'An error occurred during analysis.'}`);
+        setErrorMessage(`⚠️ ${errMessage}`);
       }
     } finally {
       setIsAnalyzing(false);
@@ -1387,7 +1373,7 @@ export default function App() {
                     <div className="flex items-center space-x-2">
                       {!isPremiumUser && (
                         <span className="text-xs px-2.5 py-0.5 rounded-full font-bold border bg-sky-50 text-sky-700 border-sky-200">
-                          {lang === 'ko' ? `무료 분석 ${remainingCount}/3회` : `Free: ${remainingCount}/3`}
+                          {t('dailyLimitBadge')}{remainingCount}/3
                         </span>
                       )}
                       
@@ -1481,7 +1467,7 @@ export default function App() {
                 {errorMessage && (
                   <div className="p-3 bg-rose-50 text-rose-700 rounded-2xl border border-rose-200 flex items-center justify-between text-xs sm:text-sm font-medium">
                     <span>{errorMessage}</span>
-                    <button onClick={() => setErrorMessage('')} className="font-bold hover:text-rose-900 cursor-pointer">Close</button>
+                    <button onClick={() => setErrorMessage('')} className="font-bold hover:text-rose-900 cursor-pointer">{t('close')}</button>
                   </div>
                 )}
 
