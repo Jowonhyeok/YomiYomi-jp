@@ -1084,30 +1084,30 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-slate-800 font-sans border-t-4 border-rose-600 relative pb-20 flex flex-col justify-between text-[17.5px] sm:text-[18px]">
+    <div className="min-h-screen bg-[#FDFBF7] text-slate-800 font-sans border-t-4 border-rose-600 relative pb-20 flex flex-col justify-between">
       <div>
-        {/* 🌸 헤더 영역 (로고 중앙 정렬 및 10% 확대) 🌸 */}
-        <header className="bg-white border-b border-rose-100 shadow-2xs sticky top-0 z-40 h-16 sm:h-20">
-          <div className="max-w-[1500px] mx-auto px-4 sm:px-8 h-full grid grid-cols-3 items-center">
+        {/* 🌸 헤더 영역 (로고 중앙 정렬) 🌸 */}
+        <header className="bg-white border-b border-rose-100 shadow-2xs sticky top-0 z-40 h-14">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 h-full grid grid-cols-3 items-center">
             
             {/* 좌측: 탭 메뉴 */}
             <div className="flex items-center space-x-2 justify-start">
-              <div className="hidden lg:flex space-x-1.5 bg-slate-100 p-1.5 rounded-xl">
+              <div className="hidden lg:flex space-x-1 bg-slate-100 p-0.5 rounded-lg">
                 <button
                   onClick={() => setActiveTab('analyze')}
-                  className={`px-4.5 py-2.5 rounded-xl text-base sm:text-lg font-bold transition cursor-pointer ${activeTab === 'analyze' ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                  className={`px-3.5 py-1.5 rounded-md text-sm font-bold transition cursor-pointer ${activeTab === 'analyze' ? 'bg-white text-rose-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
                 >
                   {t('analyzeTab')}
                 </button>
                 <button
                   onClick={() => setActiveTab('decks')}
-                  className={`px-4.5 py-2.5 rounded-xl text-base sm:text-lg font-bold transition cursor-pointer ${activeTab === 'decks' ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                  className={`px-3.5 py-1.5 rounded-md text-sm font-bold transition cursor-pointer ${activeTab === 'decks' ? 'bg-white text-rose-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
                 >
                   {t('decksTab')}
                 </button>
                 <button
                   onClick={() => setActiveTab('quiz')}
-                  className={`px-4.5 py-2.5 rounded-xl text-base sm:text-lg font-bold transition cursor-pointer ${activeTab === 'quiz' ? 'bg-white text-rose-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                  className={`px-3.5 py-1.5 rounded-md text-sm font-bold transition cursor-pointer ${activeTab === 'quiz' ? 'bg-white text-rose-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
                 >
                   {t('quizTab')}
                 </button>
@@ -1118,28 +1118,28 @@ export default function App() {
             <div className="flex items-center justify-center">
               <button 
                 onClick={() => setActiveTab('analyze')}
-                className="flex items-center space-x-2 sm:space-x-3 focus:outline-none group cursor-pointer"
+                className="flex items-center space-x-1.5 sm:space-x-2 focus:outline-none group cursor-pointer"
               >
-                <span className="text-2xl sm:text-3xl group-hover:scale-110 transition select-none">🌸</span>
-                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 group-hover:text-rose-600 transition flex items-center gap-2 app-logo-text whitespace-nowrap">
+                <span className="text-xl sm:text-2xl group-hover:scale-110 transition select-none">🌸</span>
+                <h1 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 group-hover:text-rose-600 transition flex items-center gap-1.5 app-logo-text whitespace-nowrap">
                   <span>YomiYomi</span>
                   {currentUser?.isSubscribed && (
-                    <span className="font-black text-rose-600 text-2xl sm:text-3xl ml-0.5">
+                    <span className="font-black text-rose-600 text-lg sm:text-2xl ml-0.5">
                       Premium
                     </span>
                   )}
                 </h1>
-                <span className="text-2xl sm:text-3xl group-hover:scale-110 transition select-none">🌸</span>
+                <span className="text-xl sm:text-2xl group-hover:scale-110 transition select-none">🌸</span>
               </button>
             </div>
 
             {/* 우측: 버튼 그룹 */}
-            <div className="flex items-center justify-end space-x-2 sm:space-x-3">
+            <div className="flex items-center justify-end space-x-1.5 sm:space-x-2">
               <button
                 onClick={() => setIsPricingModalOpen(true)}
-                className="px-4 py-2 sm:px-5 sm:py-2.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs sm:text-base rounded-xl shadow-xs transition flex items-center gap-1.5 active:scale-95 cursor-pointer shrink-0"
+                className="px-3 py-1.5 sm:px-3.5 sm:py-1.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition flex items-center gap-1 active:scale-95 cursor-pointer shrink-0"
               >
-                <span className="text-sm sm:text-lg">👑</span>
+                <span>👑</span>
                 <span className="hidden sm:inline">{t('membership')}</span>
               </button>
 
@@ -1147,15 +1147,15 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setIsHeaderLangOpen(!isHeaderLangOpen)}
-                  className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl flex items-center gap-2 text-xs sm:text-base font-normal text-slate-700 transition cursor-pointer shrink-0"
+                  className="px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl flex items-center gap-1.5 text-xs sm:text-sm font-normal text-slate-700 transition cursor-pointer shrink-0"
                 >
-                  <img src={currentLangObj.flagUrl} alt={currentLangObj.label} className="w-5 h-3.5 object-cover rounded-2xs" />
-                  <span className="hidden sm:inline text-xs sm:text-base font-normal">{currentLangObj.label}</span>
-                  <span className="text-xs text-slate-400">▾</span>
+                  <img src={currentLangObj.flagUrl} alt={currentLangObj.label} className="w-4 h-3 object-cover rounded-2xs" />
+                  <span className="hidden sm:inline text-xs sm:text-sm font-normal">{currentLangObj.label}</span>
+                  <span className="text-[10px] text-slate-400">▾</span>
                 </button>
 
                 {isHeaderLangOpen && (
-                  <div className="absolute right-0 mt-2 w-44 bg-white border border-rose-100 rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 z-50 py-1.5">
+                  <div className="absolute right-0 mt-1.5 w-36 bg-white border border-rose-100 rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 z-50 py-1">
                     {LANG_OPTIONS.map((item) => (
                       <button
                         key={item.code}
@@ -1164,11 +1164,11 @@ export default function App() {
                           handleLanguageChange(item.code);
                           setIsHeaderLangOpen(false);
                         }}
-                        className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-xs sm:text-base text-left hover:bg-rose-50 transition ${
+                        className={`w-full flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm text-left hover:bg-rose-50 transition ${
                           lang === item.code ? 'text-rose-600 font-medium bg-rose-50/50' : 'text-slate-700 font-normal'
                         }`}
                       >
-                        <img src={item.flagUrl} alt={item.label} className="w-5 h-3.5 object-cover rounded-2xs" />
+                        <img src={item.flagUrl} alt={item.label} className="w-4 h-3 object-cover rounded-2xs" />
                         <span className={lang === item.code ? 'font-medium' : 'font-normal'}>{item.label}</span>
                       </button>
                     ))}
@@ -1177,19 +1177,19 @@ export default function App() {
               </div>
 
               {currentUser ? (
-                <div className="flex items-center pl-1.5 border-l border-slate-200">
+                <div className="flex items-center pl-1 border-l border-slate-200">
                   <button
                     onClick={() => setIsSettingsModalOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-2 text-slate-600 hover:text-rose-600 text-xs sm:text-base font-normal rounded-xl hover:bg-rose-50 transition cursor-pointer"
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-slate-600 hover:text-rose-600 text-xs sm:text-sm font-normal rounded-lg hover:bg-rose-50 transition cursor-pointer"
                     title={t('settingsTitle')}
                   >
-                    <span className="text-sm sm:text-lg">⚙️</span>
+                    <span>⚙️</span>
                     <span className="hidden sm:inline font-normal">{t('settingsTitle')}</span>
                   </button>
 
                   <button
                     onClick={handleLogout}
-                    className="hidden md:inline ml-1.5 px-3.5 py-2 text-xs sm:text-base font-normal text-slate-500 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 rounded-xl transition cursor-pointer"
+                    className="hidden md:inline ml-1 px-2.5 py-1.5 text-xs font-normal text-slate-500 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                   >
                     {t('logout')}
                   </button>
@@ -1197,7 +1197,7 @@ export default function App() {
               ) : (
                 <button
                   onClick={() => { setAuthMode('login'); setIsAuthModalOpen(true); }}
-                  className="px-4 py-2 sm:px-5 sm:py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-base rounded-xl shadow-xs transition cursor-pointer shrink-0"
+                  className="px-3 py-1.5 sm:px-3.5 sm:py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer shrink-0"
                 >
                   {t('login')}
                 </button>
@@ -1205,7 +1205,7 @@ export default function App() {
 
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="lg:hidden p-1 text-slate-600 hover:text-slate-900 text-2xl focus:outline-none cursor-pointer shrink-0"
+                className="lg:hidden p-1 text-slate-600 hover:text-slate-900 text-lg focus:outline-none cursor-pointer shrink-0"
               >
                 {isMobileMenuOpen ? '✕' : '☰'}
               </button>
@@ -1213,36 +1213,36 @@ export default function App() {
           </div>
 
           {isMobileMenuOpen && (
-            <div className="lg:hidden bg-white border-b border-rose-100 px-5 py-4 space-y-2.5 shadow-md">
+            <div className="lg:hidden bg-white border-b border-rose-100 px-4 py-3 space-y-2 shadow-md">
               <button
                 onClick={() => { setActiveTab('analyze'); setIsMobileMenuOpen(false); }}
-                className={`w-full text-left px-4 py-3 rounded-xl text-lg font-semibold cursor-pointer ${activeTab === 'analyze' ? 'bg-rose-50 text-rose-600' : 'text-slate-700'}`}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold cursor-pointer ${activeTab === 'analyze' ? 'bg-rose-50 text-rose-600' : 'text-slate-700'}`}
               >
                 📖 {t('analyzeTab')}
               </button>
               <button
                 onClick={() => { setActiveTab('decks'); setIsMobileMenuOpen(false); }}
-                className={`w-full text-left px-4 py-3 rounded-xl text-lg font-semibold cursor-pointer ${activeTab === 'decks' ? 'bg-rose-50 text-rose-600' : 'text-slate-700'}`}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold cursor-pointer ${activeTab === 'decks' ? 'bg-rose-50 text-rose-600' : 'text-slate-700'}`}
               >
                 🗂️ {t('decksTab')}
               </button>
               <button
                 onClick={() => { setActiveTab('quiz'); setIsMobileMenuOpen(false); }}
-                className={`w-full text-left px-4 py-3 rounded-xl text-lg font-semibold cursor-pointer ${activeTab === 'quiz' ? 'bg-rose-50 text-rose-600' : 'text-slate-700'}`}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold cursor-pointer ${activeTab === 'quiz' ? 'bg-rose-50 text-rose-600' : 'text-slate-700'}`}
               >
                 🎯 {t('quizTab')}
               </button>
               
-              <div className="pt-3 border-t border-slate-100">
+              <div className="pt-2 border-t border-slate-100">
                 {currentUser ? (
-                  <div className="flex justify-between items-center px-4 py-3 bg-slate-50 rounded-xl">
-                    <span className="text-base font-bold text-slate-700">{currentUser.name}</span>
-                    <button onClick={handleLogout} className="text-base text-rose-600 font-bold cursor-pointer">{t('logout')}</button>
+                  <div className="flex justify-between items-center px-3 py-2 bg-slate-50 rounded-lg">
+                    <span className="text-xs font-bold text-slate-700">{currentUser.name}</span>
+                    <button onClick={handleLogout} className="text-xs text-rose-600 font-bold cursor-pointer">{t('logout')}</button>
                   </div>
                 ) : (
                   <button
                     onClick={() => { setIsAuthModalOpen(true); setIsMobileMenuOpen(false); }}
-                    className="w-full py-3 bg-rose-600 text-white font-bold rounded-xl text-base cursor-pointer"
+                    className="w-full py-2 bg-rose-600 text-white font-bold rounded-lg text-xs cursor-pointer"
                   >
                     {t('loginSignup')}
                   </button>
@@ -1254,34 +1254,33 @@ export default function App() {
 
         <button
           onClick={() => setIsLeftSidebarOpenMobile(!isLeftSidebarOpenMobile)}
-          className="lg:hidden fixed bottom-6 left-6 z-50 bg-rose-600 hover:bg-rose-700 text-white p-4 rounded-full shadow-lg border-2 border-white flex items-center space-x-2 cursor-pointer"
+          className="lg:hidden fixed bottom-5 left-5 z-50 bg-rose-600 hover:bg-rose-700 text-white p-3 rounded-full shadow-lg border-2 border-white flex items-center space-x-1.5 cursor-pointer"
         >
-          <span className="text-lg">🗂️</span>
-          <span className="text-base font-bold pr-1">{t('deckSidebarTitle')} ({decks.reduce((acc, d) => acc + (d.cards ? d.cards.length : 0), 0)})</span>
+          <span className="text-sm">🗂️</span>
+          <span className="text-xs font-bold pr-1">{t('deckSidebarTitle')} ({decks.reduce((acc, d) => acc + (d.cards ? d.cards.length : 0), 0)})</span>
         </button>
 
-        {/* 🚀 10% 더 넓고 큼직한 메인 레이아웃 🚀 */}
-        <div className="max-w-[1520px] mx-auto px-4 sm:px-8 py-7 grid grid-cols-1 lg:grid-cols-12 gap-7">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
           <aside 
             className={`
               lg:col-span-3
-              bg-white border border-rose-100 shadow-xs rounded-2xl p-5 sm:p-6
-              ${isLeftSidebarOpenMobile ? 'fixed inset-x-4 top-20 z-50 max-h-[80vh] shadow-2xl' : 'hidden lg:flex'}
-              flex flex-col h-fit self-start sticky top-22
+              bg-white border border-rose-100 shadow-xs rounded-2xl p-3.5
+              ${isLeftSidebarOpenMobile ? 'fixed inset-x-4 top-16 z-50 max-h-[80vh] shadow-2xl' : 'hidden lg:flex'}
+              flex flex-col h-fit self-start sticky top-16
             `}
           >
-            <div className="flex justify-between items-center pb-3 mb-3 border-b border-rose-50 shrink-0">
-              <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <div className="flex justify-between items-center pb-2.5 mb-2.5 border-b border-rose-50 shrink-0">
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                 <span>🗂️</span> {t('deckSidebarTitle')}
               </h3>
             </div>
 
-            <div className="space-y-3 mb-3.5 shrink-0">
-              <div className="flex justify-between items-center text-sm sm:text-base">
+            <div className="space-y-2 mb-2.5 shrink-0">
+              <div className="flex justify-between items-center text-xs">
                 <span className="text-slate-600 font-semibold">{t('deckLabel')}</span>
                 <button
                   onClick={handleCreateDeck}
-                  className="text-sm sm:text-base text-rose-600 hover:underline font-bold cursor-pointer"
+                  className="text-xs text-rose-600 hover:underline font-bold cursor-pointer"
                 >
                   {t('newDeck')}
                 </button>
@@ -1289,7 +1288,7 @@ export default function App() {
               <select
                 value={selectedDeckId}
                 onChange={(e) => setSelectedDeckId(e.target.value)}
-                className="w-full text-sm sm:text-base border border-slate-200 rounded-xl p-3 bg-slate-50 font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-rose-400 cursor-pointer"
+                className="w-full text-xs sm:text-sm border border-slate-200 rounded-lg p-2 bg-slate-50 font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-rose-400 cursor-pointer"
               >
                 {decks.map(d => (
                   <option key={d.id} value={d.id}>{d.name} ({(d.cards || []).length})</option>
@@ -1302,7 +1301,7 @@ export default function App() {
                   value={searchKeyword}
                   onChange={(e) => setSearchKeyword(e.target.value)}
                   placeholder={t('searchPlaceholder')}
-                  className="w-full text-sm sm:text-base p-3 border border-slate-200 rounded-xl outline-none bg-slate-50 focus:bg-white focus:border-rose-300"
+                  className="w-full text-xs sm:text-sm p-2 border border-slate-200 rounded-lg outline-none bg-slate-50 focus:bg-white focus:border-rose-300"
                 />
               </div>
             </div>
@@ -1320,21 +1319,21 @@ export default function App() {
 
           <main className="lg:col-span-6 w-full">
             {activeTab === 'analyze' && (
-              <div className="space-y-6">
-                <div className="bg-[#FAF8F5] p-5 sm:p-7 rounded-2xl shadow-xs border border-rose-100">
-                  <label className="block text-base sm:text-lg font-bold text-slate-700 mb-3 flex items-center justify-between">
-                    <span className="flex items-center gap-2">
+              <div className="space-y-4">
+                <div className="bg-[#FAF8F5] p-4 sm:p-5 rounded-2xl shadow-xs border border-rose-100">
+                  <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-2 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
                       <span>📝</span> {t('inputTitle')}
                     </span>
                     
-                    <div className="flex items-center space-x-2.5">
+                    <div className="flex items-center space-x-2">
                       {!isPremiumUser && (
-                        <span className="text-xs sm:text-base px-3 py-1 rounded-full font-bold border bg-sky-50 text-sky-700 border-sky-200">
+                        <span className="text-xs px-2.5 py-0.5 rounded-full font-bold border bg-sky-50 text-sky-700 border-sky-200">
                           {lang === 'ko' ? `무료 분석 ${remainingCount}/3회` : `Free: ${remainingCount}/3`}
                         </span>
                       )}
                       
-                      <span className={`text-xs sm:text-base font-semibold ${inputText.length >= MAX_TEXT_LENGTH ? 'text-rose-600 font-bold' : 'text-slate-400'}`}>
+                      <span className={`text-xs font-semibold ${inputText.length >= MAX_TEXT_LENGTH ? 'text-rose-600 font-bold' : 'text-slate-400'}`}>
                         {inputText.length.toLocaleString()} / {MAX_TEXT_LENGTH.toLocaleString()}{t('charCount')}
                       </span>
                     </div>
@@ -1345,7 +1344,7 @@ export default function App() {
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                     onDragLeave={() => setIsDragging(false)}
                     onDrop={handleDrop}
-                    className={`relative border-2 border-dashed rounded-2xl transition ${isDragging ? 'border-rose-500 bg-rose-50' : 'border-slate-200 bg-[#FAF8F5]'}`}
+                    className={`relative border-2 border-dashed rounded-xl transition ${isDragging ? 'border-rose-500 bg-rose-50' : 'border-slate-200 bg-[#FAF8F5]'}`}
                   >
                     <textarea
                       value={inputText}
@@ -1356,12 +1355,12 @@ export default function App() {
                       }}
                       maxLength={MAX_TEXT_LENGTH}
                       placeholder={t('inputPlaceholder')}
-                      className="w-full h-44 p-4.5 bg-transparent outline-none resize-none text-base sm:text-xl text-slate-800"
+                      className="w-full h-32 p-3 bg-transparent outline-none resize-none text-sm sm:text-base text-slate-800"
                     />
 
-                    <div className="p-3.5 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2.5 bg-white bg-opacity-60 rounded-b-2xl">
-                      <div className="flex items-center space-x-3">
-                        <label className="cursor-pointer px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs sm:text-base font-bold transition flex items-center gap-2">
+                    <div className="p-2.5 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 bg-white bg-opacity-60 rounded-b-xl">
+                      <div className="flex items-center space-x-2">
+                        <label className="cursor-pointer px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs sm:text-sm font-bold transition flex items-center gap-1">
                           <span>{t('selectImage')}</span>
                           <input 
                             type="file" 
@@ -1374,16 +1373,16 @@ export default function App() {
                             }}
                           />
                         </label>
-                        <span className="text-xs sm:text-base text-slate-400">{t('dragNotice')}</span>
+                        <span className="text-xs text-slate-400">{t('dragNotice')}</span>
                       </div>
 
                       {selectedImage && (
-                        <div className="flex items-center space-x-2 bg-rose-50 border border-rose-200 px-3.5 py-1.5 rounded-xl">
-                          <img src={selectedImage.preview} alt="Preview" className="w-7 h-7 object-cover rounded" />
-                          <span className="text-xs sm:text-base text-rose-700 font-medium truncate max-w-[130px]">{selectedImage.file.name}</span>
+                        <div className="flex items-center space-x-2 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg">
+                          <img src={selectedImage.preview} alt="Preview" className="w-5 h-5 object-cover rounded" />
+                          <span className="text-xs text-rose-700 font-medium truncate max-w-[100px]">{selectedImage.file.name}</span>
                           <button 
                             onClick={() => setSelectedImage(null)}
-                            className="text-xs sm:text-base text-rose-500 hover:text-rose-800 font-bold ml-1 cursor-pointer"
+                            className="text-xs text-rose-500 hover:text-rose-800 font-bold ml-1 cursor-pointer"
                           >
                             ✕
                           </button>
@@ -1392,11 +1391,11 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="mt-4 flex justify-end items-center">
+                  <div className="mt-3 flex justify-end items-center">
                     <button
                       onClick={handleAnalyze}
                       disabled={isAnalyzing || isCoolingDown || (!inputText.trim() && !selectedImage)}
-                      className="px-8 py-3 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 text-white font-bold rounded-xl shadow-xs transition text-base sm:text-lg flex items-center space-x-2 cursor-pointer"
+                      className="px-6 py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 text-white font-bold rounded-xl shadow-2xs transition text-xs sm:text-sm flex items-center space-x-1.5 cursor-pointer"
                     >
                       {isAnalyzing ? (
                         <>
@@ -1413,8 +1412,8 @@ export default function App() {
                 </div>
 
                 {isAnalyzing && (
-                  <div className="p-6 bg-amber-50 rounded-2xl border border-amber-200 animate-pulse space-y-2">
-                    <div className="flex items-center space-x-2 text-amber-900 font-semibold text-base sm:text-lg">
+                  <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 animate-pulse space-y-2">
+                    <div className="flex items-center space-x-2 text-amber-900 font-semibold text-xs sm:text-sm">
                       <span className="animate-spin">🌸</span>
                       <span>{t('analyzing')}</span>
                     </div>
@@ -1422,23 +1421,23 @@ export default function App() {
                 )}
 
                 {errorMessage && (
-                  <div className="p-4 bg-rose-50 text-rose-700 rounded-2xl border border-rose-200 flex items-center justify-between text-base sm:text-lg font-medium">
+                  <div className="p-3 bg-rose-50 text-rose-700 rounded-2xl border border-rose-200 flex items-center justify-between text-xs sm:text-sm font-medium">
                     <span>{errorMessage}</span>
                     <button onClick={() => setErrorMessage('')} className="font-bold hover:text-rose-900 cursor-pointer">Close</button>
                   </div>
                 )}
 
                 {analysisResult && (
-                  <div className="space-y-6">
-                    <div className="bg-white p-6 sm:p-7 rounded-2xl shadow-xs border border-rose-100">
-                      <div className="flex flex-wrap justify-between items-center mb-4 pb-3.5 border-b border-slate-100 gap-3">
-                        <div className="flex items-center space-x-3">
-                          <h3 className="text-lg font-bold text-slate-700 flex items-center gap-2">
+                  <div className="space-y-4">
+                    <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100">
+                      <div className="flex flex-wrap justify-between items-center mb-3 pb-2 border-b border-slate-100 gap-2">
+                        <div className="flex items-center space-x-2">
+                          <h3 className="text-sm font-bold text-slate-600 flex items-center gap-1.5">
                             <span>🎏</span> {t('noteTitle')}
                           </h3>
                           <button
                             onClick={() => toggleSpeech(inputText)}
-                            className={`p-2.5 text-base font-bold rounded-xl transition flex items-center justify-center cursor-pointer ${
+                            className={`p-1.5 text-xs sm:text-sm font-bold rounded-md transition flex items-center justify-center cursor-pointer ${
                               speakingText === inputText
                                 ? 'bg-rose-600 text-white hover:bg-rose-700 border border-rose-700'
                                 : 'bg-amber-100 hover:bg-amber-200 text-amber-800'
@@ -1448,27 +1447,27 @@ export default function App() {
                           </button>
                         </div>
                         
-                        <div className="flex flex-wrap items-center space-x-2.5 text-xs sm:text-base bg-slate-50 p-2.5 rounded-xl border border-slate-200 gap-y-2">
-                          <div className="flex items-center space-x-2">
+                        <div className="flex flex-wrap items-center space-x-2 text-xs sm:text-sm bg-slate-50 p-1.5 rounded-xl border border-slate-200 gap-y-1">
+                          <div className="flex items-center space-x-1">
                             <button
                               onClick={() => setFontSize(prev => Math.max(14, prev - 2))}
-                              className="px-3 py-1 bg-white border rounded-lg text-slate-700 font-bold hover:bg-slate-100 text-xs sm:text-base cursor-pointer"
+                              className="px-2 py-0.5 bg-white border rounded text-slate-700 font-bold hover:bg-slate-100 text-xs cursor-pointer"
                             >
                               A-
                             </button>
-                            <span className="text-xs sm:text-base font-semibold text-slate-500 w-12 text-center">{fontSize}px</span>
+                            <span className="text-xs font-semibold text-slate-500 w-8 text-center">{fontSize}px</span>
                             <button
                               onClick={() => setFontSize(prev => Math.min(28, prev + 2))}
-                              className="px-3 py-1 bg-white border rounded-lg text-slate-700 font-bold hover:bg-slate-100 text-xs sm:text-base cursor-pointer"
+                              className="px-2 py-0.5 bg-white border rounded text-slate-700 font-bold hover:bg-slate-100 text-xs cursor-pointer"
                             >
                               A+
                             </button>
                           </div>
 
-                          <div className="flex items-center space-x-2 border-l border-slate-200 pl-3">
+                          <div className="flex items-center space-x-1.5 border-l border-slate-200 pl-2">
                             <button
                               onClick={() => setReadingDisplayMode(readingDisplayMode === 'off' ? 'furigana' : 'off')}
-                              className={`px-4 py-2 rounded-xl text-xs sm:text-base font-bold transition shadow-2xs cursor-pointer ${
+                              className={`px-3 py-1 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer ${
                                 readingDisplayMode !== 'off'
                                   ? 'bg-rose-600 text-white hover:bg-rose-700' 
                                   : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
@@ -1478,7 +1477,7 @@ export default function App() {
                             </button>
                             <button
                               onClick={() => setShowTranslation(!showTranslation)}
-                              className={`px-4 py-2 rounded-xl text-xs sm:text-base font-bold transition shadow-2xs cursor-pointer ${
+                              className={`px-3 py-1 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer ${
                                 showTranslation
                                   ? 'bg-sky-600 text-white hover:bg-sky-700' 
                                   : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
@@ -1495,7 +1494,7 @@ export default function App() {
                           fontSize: `${fontSize}px`,
                           fontFamily: 'sans-serif'
                         }}
-                        className="note-content-area p-5.5 bg-[#FAF8F5] rounded-2xl border border-amber-100 space-y-3.5"
+                        className="note-content-area p-4 bg-[#FAF8F5] rounded-xl border border-amber-100 space-y-2.5"
                       >
                         {analysisResult.rubySentences && analysisResult.rubySentences.length > 0 ? (
                           analysisResult.rubySentences.map((rawSentence, sIdx) => {
@@ -1524,11 +1523,11 @@ export default function App() {
                             );
                           })
                         ) : (
-                          <p className="text-slate-400 text-base">No analyzed sentences found.</p>
+                          <p className="text-slate-400 text-xs sm:text-sm">No analyzed sentences found.</p>
                         )}
                         
                         {showTranslation && analysisResult.translatedText && (
-                          <div className="mt-6 pt-4 border-t border-amber-200/50 text-lg sm:text-xl font-bold text-slate-800">
+                          <div className="mt-4 pt-3 border-t border-amber-200/50 text-sm sm:text-base font-bold text-slate-700">
                             {analysisResult.translatedText}
                           </div>
                         )}
@@ -1536,14 +1535,14 @@ export default function App() {
                     </div>
 
                     {analysisResult.wordList && analysisResult.wordList.length > 0 && (
-                      <div className="bg-white p-6 sm:p-7 rounded-2xl shadow-xs border border-rose-100 space-y-4">
-                        <div className="flex flex-wrap justify-between items-center gap-2.5 pb-3.5 border-b border-slate-100">
-                          <div className="flex items-center space-x-3">
-                            <span className="text-xs sm:text-lg text-slate-600 font-semibold">{t('targetDeck')}</span>
+                      <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
+                        <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs sm:text-sm text-slate-600 font-semibold">{t('targetDeck')}</span>
                             <select
                               value={selectedDeckId}
                               onChange={(e) => setSelectedDeckId(e.target.value)}
-                              className="text-xs sm:text-lg border border-slate-200 rounded-xl px-3.5 py-2 bg-slate-50 font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-rose-400 cursor-pointer"
+                              className="text-xs sm:text-sm border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-rose-400 cursor-pointer"
                             >
                               {decks.map(d => (
                                 <option key={d.id} value={d.id}>{d.name} ({(d.cards || []).length})</option>
@@ -1553,7 +1552,7 @@ export default function App() {
 
                           <button
                             onClick={() => setHideWordMeanings(!hideWordMeanings)}
-                            className={`text-xs sm:text-lg px-4.5 py-2 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideWordMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                            className={`text-xs sm:text-sm px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideWordMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                           >
                             {hideWordMeanings ? t('showMeaning') : t('hideMeaning')}
                           </button>
@@ -1565,12 +1564,12 @@ export default function App() {
                           icon="📌"
                           renderItem={(word) => (
                             <div className="text-center w-full max-w-sm px-2 py-1">
-                              <div className="flex items-center justify-center space-x-2.5 mb-1.5">
-                                <span className="font-bold text-2xl sm:text-3xl text-slate-900">{word.word}</span>
-                                <span className="text-base sm:text-lg text-rose-600 font-semibold">[{word.reading}]</span>
+                              <div className="flex items-center justify-center space-x-2 mb-1">
+                                <span className="font-bold text-xl text-slate-900">{word.word}</span>
+                                <span className="text-sm text-rose-600 font-semibold">[{word.reading}]</span>
                                 <button
                                   onClick={() => toggleSpeech(word.word)}
-                                  className={`text-lg p-1 rounded transition cursor-pointer ${
+                                  className={`text-sm p-1 rounded transition cursor-pointer ${
                                     speakingText === word.word
                                       ? 'bg-rose-600 text-white font-bold border border-rose-700'
                                       : 'text-slate-400 hover:text-amber-600'
@@ -1578,12 +1577,12 @@ export default function App() {
                                 >
                                   {speakingText === word.word ? '⏹️' : '🔊'}
                                 </button>
-                                {word.jlpt && <span className="text-xs sm:text-sm bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-bold">{word.jlpt}</span>}
+                                {word.jlpt && <span className="text-xs bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-bold">{word.jlpt}</span>}
                               </div>
-                              <p className="text-xs sm:text-lg text-slate-600 mt-2">
+                              <p className="text-xs sm:text-sm text-slate-600 mt-2">
                                 {t('partOfSpeech')}: <span className="font-semibold text-slate-800">{getLocalizedPOS(word.partOfSpeech, lang)}</span>
                               </p>
-                              <p className="text-xs sm:text-lg mt-2">
+                              <p className="text-xs sm:text-sm mt-1.5">
                                 {t('meaning')}: {' '}
                                 <span className={hideWordMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'font-bold text-slate-800'}>
                                   {getLocalizedText(word.meaning, lang)}
@@ -1591,7 +1590,7 @@ export default function App() {
                               </p>
                               <button
                                 onClick={() => handleAddCardToDeck(word)}
-                                className="mt-4 px-6 py-2.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-lg font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
+                                className="mt-3 px-4 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-sm font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
                               >
                                 {t('addWordBtn')}
                               </button>
@@ -1602,14 +1601,14 @@ export default function App() {
                     )}
 
                     {analysisResult.kanjiList && analysisResult.kanjiList.length > 0 && (
-                      <div className="bg-white p-6 sm:p-7 rounded-2xl shadow-xs border border-rose-100 space-y-4">
-                        <div className="flex flex-wrap justify-between items-center gap-2.5 pb-3.5 border-b border-slate-100">
-                          <div className="flex items-center space-x-3">
-                            <span className="text-xs sm:text-lg text-slate-600 font-semibold">{t('targetDeck')}</span>
+                      <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
+                        <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs sm:text-sm text-slate-600 font-semibold">{t('targetDeck')}</span>
                             <select
                               value={selectedDeckId}
                               onChange={(e) => setSelectedDeckId(e.target.value)}
-                              className="text-xs sm:text-lg border border-slate-200 rounded-xl px-3.5 py-2 bg-slate-50 font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-rose-400 cursor-pointer"
+                              className="text-xs sm:text-sm border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-rose-400 cursor-pointer"
                             >
                               {decks.map(d => (
                                 <option key={d.id} value={d.id}>{d.name} ({(d.cards || []).length})</option>
@@ -1619,7 +1618,7 @@ export default function App() {
 
                           <button
                             onClick={() => setHideKanjiMeanings(!hideKanjiMeanings)}
-                            className={`text-xs sm:text-lg px-4.5 py-2 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideKanjiMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                            className={`text-xs sm:text-sm px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideKanjiMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                           >
                             {hideKanjiMeanings ? t('showMeaning') : t('hideMeaning')}
                           </button>
@@ -1631,11 +1630,11 @@ export default function App() {
                           icon="🏮"
                           renderItem={(k) => (
                             <div className="text-center w-full max-w-sm px-2 py-1">
-                              <div className="flex justify-center items-center gap-2.5 mb-1.5">
-                                <span className="text-3xl sm:text-4xl font-bold text-slate-800">{k.kanji}</span>
+                              <div className="flex justify-center items-center gap-1.5 mb-1">
+                                <span className="text-2xl font-bold text-slate-800">{k.kanji}</span>
                                 <button
                                   onClick={() => toggleSpeech(k.kanji)}
-                                  className={`text-lg p-1 rounded transition cursor-pointer ${
+                                  className={`text-sm p-1 rounded transition cursor-pointer ${
                                     speakingText === k.kanji
                                       ? 'bg-rose-600 text-white font-bold border border-rose-700'
                                       : 'text-slate-400 hover:text-amber-600'
@@ -1644,8 +1643,8 @@ export default function App() {
                                   {speakingText === k.kanji ? '⏹️' : '🔊'}
                                 </button>
                               </div>
-                              <span className="text-base sm:text-lg text-rose-600 font-bold block">{k.readings}</span>
-                              <span className="text-xs sm:text-lg block mt-2">
+                              <span className="text-sm text-rose-600 font-bold block">{k.readings}</span>
+                              <span className="text-xs sm:text-sm block mt-1.5">
                                 {t('meaning')}: {' '}
                                 <span className={hideKanjiMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'font-semibold text-slate-800'}>
                                   {getLocalizedText(k.meaning, lang)}
@@ -1653,7 +1652,7 @@ export default function App() {
                               </span>
                               <button
                                 onClick={() => handleAddKanjiToDeck(k)}
-                                className="mt-4 px-6 py-2.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-lg font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
+                                className="mt-3 px-4 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-sm font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
                               >
                                 {t('addWordBtn')}
                               </button>
@@ -1664,14 +1663,14 @@ export default function App() {
                     )}
 
                     {analysisResult.grammarList && analysisResult.grammarList.length > 0 && (
-                      <div className="bg-white p-6 sm:p-7 rounded-2xl shadow-xs border border-rose-100 space-y-4">
-                        <div className="flex flex-wrap justify-between items-center gap-2.5 pb-3.5 border-b border-slate-100">
-                          <div className="flex items-center space-x-3">
-                            <span className="text-xs sm:text-lg text-slate-600 font-semibold">{t('targetDeck')}</span>
+                      <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
+                        <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs sm:text-sm text-slate-600 font-semibold">{t('targetDeck')}</span>
                             <select
                               value={selectedDeckId}
                               onChange={(e) => setSelectedDeckId(e.target.value)}
-                              className="text-xs sm:text-lg border border-slate-200 rounded-xl px-3.5 py-2 bg-slate-50 font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-rose-400 cursor-pointer"
+                              className="text-xs sm:text-sm border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-rose-400 cursor-pointer"
                             >
                               {decks.map(d => (
                                 <option key={d.id} value={d.id}>{d.name} ({(d.cards || []).length})</option>
@@ -1681,7 +1680,7 @@ export default function App() {
 
                           <button
                             onClick={() => setHideGrammarMeanings(!hideGrammarMeanings)}
-                            className={`text-xs sm:text-lg px-4.5 py-2 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideGrammarMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                            className={`text-xs sm:text-sm px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideGrammarMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                           >
                             {hideGrammarMeanings ? t('showMeaning') : t('hideMeaning')}
                           </button>
@@ -1693,17 +1692,17 @@ export default function App() {
                           icon="⛩️"
                           renderItem={(g) => (
                             <div className="text-center w-full max-w-md px-2 py-1">
-                              <span className="inline-block px-4 py-2 bg-rose-100 text-rose-800 font-bold text-base sm:text-lg rounded-xl mb-2.5">
+                              <span className="inline-block px-3 py-1 bg-rose-100 text-rose-800 font-bold text-sm rounded-md mb-2">
                                 {g.grammar}
                               </span>
-                              <p className="text-xs sm:text-lg leading-relaxed font-medium mb-3.5">
+                              <p className="text-xs sm:text-sm leading-relaxed font-medium mb-3">
                                 <span className={hideGrammarMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'text-slate-800'}>
                                   {getLocalizedText(g.explanation, lang)}
                                 </span>
                               </p>
                               <button
                                 onClick={() => handleAddGrammarToDeck(g)}
-                                className="px-6 py-2.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-lg font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
+                                className="px-4 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-sm font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
                               >
                                 {t('addWordBtn')}
                               </button>
@@ -1718,28 +1717,28 @@ export default function App() {
             )}
 
             {activeTab === 'decks' && (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-800 flex items-center gap-1.5">
                     <span>🗂️</span> {t('allDeckTitle')}
                   </h2>
                   <button
                     onClick={handleCreateDeck}
-                    className="px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-lg rounded-xl shadow-2xs cursor-pointer"
+                    className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs cursor-pointer"
                   >
                     {t('newDeck')}
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {decks.map(deck => (
                     <div
                       key={deck.id}
                       onClick={() => setSelectedDeckId(deck.id)}
-                      className={`p-4.5 rounded-2xl border cursor-pointer transition ${selectedDeckId === deck.id ? 'bg-rose-50 border-rose-400 ring-2 ring-rose-100' : 'bg-white border-slate-200 hover:border-slate-300'}`}
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition ${selectedDeckId === deck.id ? 'bg-rose-50 border-rose-400 ring-2 ring-rose-100' : 'bg-white border-slate-200 hover:border-slate-300'}`}
                     >
-                      <div className="flex justify-between items-start mb-2 gap-2">
-                        <h3 className="font-bold text-slate-800 text-xs sm:text-lg truncate max-w-[220px]">{deck.name}</h3>
+                      <div className="flex justify-between items-start mb-1.5 gap-2">
+                        <h3 className="font-bold text-slate-800 text-xs sm:text-sm truncate max-w-[180px]">{deck.name}</h3>
                         {decks.length > 1 && (
                           <button
                             onClick={(e) => { 
@@ -1747,67 +1746,67 @@ export default function App() {
                               e.preventDefault();
                               openDeleteModal(deck.id, deck.name); 
                             }}
-                            className="text-xs sm:text-sm text-rose-500 hover:text-rose-700 font-bold p-1.5 bg-rose-50 hover:bg-rose-100 rounded-lg transition cursor-pointer shrink-0"
+                            className="text-xs text-rose-500 hover:text-rose-700 font-bold p-1 bg-rose-50 hover:bg-rose-100 rounded transition cursor-pointer shrink-0"
                           >
                             {t('delete')}
                           </button>
                         )}
                       </div>
-                      <p className="text-xs sm:text-base text-slate-500">{t('savedWordsLabel')}{(deck.cards || []).length}{t('unitCount')}</p>
+                      <p className="text-xs text-slate-500">{t('savedWordsLabel')}{(deck.cards || []).length}{t('unitCount')}</p>
                     </div>
                   ))}
                 </div>
 
-                <div className="bg-[#FFFFFF] p-6 rounded-2xl shadow-xs border border-rose-100">
-                  <div className="flex flex-wrap items-center justify-between gap-2.5 mb-4 pb-3.5 border-b">
-                    <div className="flex items-center space-x-3">
-                      <span className="px-3.5 py-1.5 bg-rose-100 text-rose-700 font-bold text-xs sm:text-lg rounded-xl max-w-[200px] truncate">
+                <div className="bg-[#FFFFFF] p-4 rounded-2xl shadow-xs border border-rose-100">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b">
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2.5 py-1 bg-rose-100 text-rose-700 font-bold text-xs sm:text-sm rounded-md max-w-[150px] truncate">
                         {currentActiveDeck.name}
                       </span>
-                      <span className="text-xs sm:text-lg font-bold text-slate-800">{t('wordCardListTitle')}</span>
+                      <span className="text-xs sm:text-sm font-bold text-slate-800">{t('wordCardListTitle')}</span>
                     </div>
 
-                    <div className="flex items-center space-x-2.5">
+                    <div className="flex items-center space-x-2">
                       <button
                         onClick={handleExportAnki}
-                        className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs sm:text-base rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs sm:text-sm rounded-lg transition flex items-center gap-1 cursor-pointer shadow-2xs"
                       >
                         <span>{t('exportAnki')}</span>
                       </button>
                       <button
                         onClick={handlePrintTestSheet}
-                        className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-base rounded-xl transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-sm rounded-lg transition flex items-center gap-1 shadow-2xs cursor-pointer"
                       >
                         <span>{t('makePdf')}</span>
                       </button>
                     </div>
                   </div>
 
-                  <div className="mb-4">
+                  <div className="mb-3">
                     <input
                       type="text"
                       value={searchKeyword}
                       onChange={(e) => setSearchKeyword(e.target.value)}
                       placeholder={t('searchPlaceholder')}
-                      className="w-full text-xs sm:text-base p-3.5 border border-slate-200 rounded-xl outline-none bg-slate-50 focus:bg-white focus:border-rose-400"
+                      className="w-full text-xs sm:text-sm p-2.5 border border-slate-200 rounded-xl outline-none bg-slate-50 focus:bg-white focus:border-rose-400"
                     />
                   </div>
 
                   {filteredCards.length === 0 ? (
-                    <p className="text-base sm:text-xl font-medium text-slate-400 py-12 text-center">
+                    <p className="text-sm sm:text-base font-medium text-slate-400 py-8 text-center">
                       {searchKeyword ? t('noSearchWords') : t('noSavedWords')}
                     </p>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {filteredCards.map(card => (
-                        <div key={card.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex justify-between items-center">
+                        <div key={card.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center">
                           <div>
-                            <div className="flex items-baseline space-x-2">
-                              <span className="font-bold text-xs sm:text-lg text-slate-900">{card.word}</span>
-                              <span className="text-xs sm:text-base text-rose-600 font-semibold">[{card.reading}]</span>
+                            <div className="flex items-baseline space-x-1.5">
+                              <span className="font-bold text-xs sm:text-sm text-slate-900">{card.word}</span>
+                              <span className="text-xs text-rose-600 font-semibold">[{card.reading}]</span>
                               <button
                                 onClick={() => toggleSpeech(card.word)}
-                                className={`text-xs sm:text-base p-1 rounded transition cursor-pointer ${
+                                className={`text-xs p-0.5 rounded transition cursor-pointer ${
                                   speakingText === card.word
                                     ? 'bg-rose-600 text-white font-bold border border-rose-700'
                                     : 'text-slate-400 hover:text-amber-600'
@@ -1815,9 +1814,9 @@ export default function App() {
                               >
                                 {speakingText === card.word ? '⏹️' : '🔊'}
                               </button>
-                              {card.jlpt && <span className="text-[11px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded font-bold">{card.jlpt}</span>}
+                              {card.jlpt && <span className="text-[10px] bg-rose-100 text-rose-700 px-1 py-0.5 rounded font-bold">{card.jlpt}</span>}
                             </div>
-                            <p className="text-xs sm:text-base text-slate-500 mt-1">{getLocalizedPOS(card.partOfSpeech, lang)} • {getLocalizedText(card.meaning, lang)}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">{getLocalizedPOS(card.partOfSpeech, lang)} • {getLocalizedText(card.meaning, lang)}</p>
                           </div>
                           <button
                             onClick={(e) => {
@@ -1825,7 +1824,7 @@ export default function App() {
                               e.preventDefault();
                               handleDeleteCard(selectedDeckId, card.id || '', card.word);
                             }}
-                            className="text-xs sm:text-base text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-3.5 py-2 font-bold border border-rose-200 bg-white rounded-xl transition cursor-pointer"
+                            className="text-xs text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1 font-bold border border-rose-200 bg-white rounded-md transition cursor-pointer"
                           >
                             {t('delete')}
                           </button>
@@ -1838,34 +1837,34 @@ export default function App() {
             )}
 
             {activeTab === 'quiz' && (
-              <div className="relative max-w-2xl mx-auto bg-white rounded-2xl shadow-xs border border-rose-100 overflow-hidden min-h-[420px]">
+              <div className="relative max-w-xl mx-auto bg-white rounded-2xl shadow-xs border border-rose-100 overflow-hidden min-h-[360px]">
                 {!currentUser?.isSubscribed ? (
-                  <div className="p-9 text-center flex flex-col justify-center items-center space-y-5 bg-gradient-to-b from-slate-900 to-slate-800 text-white min-h-[420px]">
-                    <span className="text-7xl animate-bounce">🔒</span>
-                    <h3 className="text-2xl font-black">{t('quizLockedTitle')}</h3>
-                    <p className="text-xs sm:text-lg text-slate-300 leading-relaxed max-w-md">{t('quizLockedDesc')}</p>
+                  <div className="p-6 text-center flex flex-col justify-center items-center space-y-4 bg-gradient-to-b from-slate-900 to-slate-800 text-white min-h-[360px]">
+                    <span className="text-5xl animate-bounce">🔒</span>
+                    <h3 className="text-lg font-black">{t('quizLockedTitle')}</h3>
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-sm">{t('quizLockedDesc')}</p>
                     <button
                       onClick={() => setIsPricingModalOpen(true)}
-                      className="mt-2 px-8 py-3.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-extrabold text-xs sm:text-lg rounded-xl shadow-lg transition active:scale-95 cursor-pointer flex items-center gap-2.5"
+                      className="mt-2 px-6 py-2.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition active:scale-95 cursor-pointer flex items-center gap-1.5"
                     >
                       <span>👑</span>
                       <span>{payModalI18n.buyBtn}</span>
                     </button>
                   </div>
                 ) : !quizState ? (
-                  <div className="p-7 space-y-6">
-                    <div className="text-center space-y-2">
-                      <span className="text-5xl block">🎯</span>
-                      <h2 className="text-base sm:text-2xl font-bold text-slate-800">{t('quizTitle')}</h2>
-                      <p className="text-xs sm:text-lg text-slate-500">{t('quizSelectDesc')}</p>
+                  <div className="p-5 space-y-4">
+                    <div className="text-center space-y-1">
+                      <span className="text-3xl block">🎯</span>
+                      <h2 className="text-base sm:text-lg font-bold text-slate-800">{t('quizTitle')}</h2>
+                      <p className="text-xs sm:text-sm text-slate-500">{t('quizSelectDesc')}</p>
                     </div>
 
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5 max-h-52 overflow-y-auto">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5 max-h-40 overflow-y-auto">
                       {decks.map(deck => {
                         const isChecked = quizSelectedDeckIds.includes(deck.id);
                         return (
-                          <label key={deck.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 cursor-pointer hover:border-rose-300">
-                            <div className="flex items-center space-x-3">
+                          <label key={deck.id} className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-rose-300">
+                            <div className="flex items-center space-x-2">
                               <input
                                 type="checkbox"
                                 checked={isChecked}
@@ -1880,11 +1879,11 @@ export default function App() {
                                     setQuizSelectedDeckIds(prev => [...prev, deck.id]);
                                   }
                                 }}
-                                className="rounded text-rose-600 focus:ring-rose-400 w-4 h-4"
+                                className="rounded text-rose-600 focus:ring-rose-400"
                               />
-                              <span className="text-xs sm:text-lg font-bold text-slate-800 truncate max-w-[220px]">{deck.name}</span>
+                              <span className="text-xs sm:text-sm font-bold text-slate-800 truncate max-w-[180px]">{deck.name}</span>
                             </div>
-                            <span className="text-xs sm:text-base text-slate-400">{(deck.cards || []).length}{t('unitCount')}</span>
+                            <span className="text-xs text-slate-400">{(deck.cards || []).length}{t('unitCount')}</span>
                           </label>
                         );
                       })}
@@ -1892,61 +1891,61 @@ export default function App() {
 
                     <button
                       onClick={startQuiz}
-                      className="w-full py-4 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow transition text-xs sm:text-lg cursor-pointer"
+                      className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow transition text-xs sm:text-sm cursor-pointer"
                     >
                       {t('quizStartBtn')}
                     </button>
                   </div>
                 ) : quizState.isFinished ? (
-                  <div className="p-9 text-center space-y-5">
-                    <span className="text-6xl block">🎉</span>
-                    <h2 className="text-base sm:text-2xl font-bold text-slate-800">{t('quizCompleteTitle')}</h2>
-                    <p className="text-xs sm:text-lg text-slate-600">
+                  <div className="p-6 text-center space-y-3">
+                    <span className="text-4xl block">🎉</span>
+                    <h2 className="text-base sm:text-lg font-bold text-slate-800">{t('quizCompleteTitle')}</h2>
+                    <p className="text-xs sm:text-sm text-slate-600">
                       {quizState.quizCards.length} {t('unitCount')} 중 <span className="text-rose-600 font-bold">{quizState.score}</span> {t('quizScoreText')}
                     </p>
                     <button
                       onClick={() => setQuizState(null)}
-                      className="px-6 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs sm:text-lg rounded-xl cursor-pointer"
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs sm:text-sm rounded-xl cursor-pointer"
                     >
                       {t('quizBackBtn')}
                     </button>
                   </div>
                 ) : (
-                  <div className="p-7 space-y-6">
-                    <div className="flex justify-between items-center text-xs sm:text-lg text-slate-400 border-b pb-3">
+                  <div className="p-5 space-y-5">
+                    <div className="flex justify-between items-center text-xs sm:text-sm text-slate-400 border-b pb-2">
                       <span>{quizState.currentCardIndex + 1} / {quizState.quizCards.length}</span>
                       <button
                         onClick={() => {
                           showConfirm(t('quizSurrenderConfirm'), () => setQuizState(null));
                         }}
-                        className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs sm:text-base cursor-pointer"
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded text-xs cursor-pointer"
                       >
                         {t('quizSurrenderBtn')}
                       </button>
                     </div>
 
-                    <div className="text-center py-6 bg-[#FAF8F5] rounded-2xl border border-amber-100">
-                      <div className="flex justify-center items-center gap-2.5 mb-1.5">
-                        <span className="text-3xl sm:text-4xl font-bold text-slate-900">
+                    <div className="text-center py-4 bg-[#FAF8F5] rounded-xl border border-amber-100">
+                      <div className="flex justify-center items-center gap-1.5 mb-1">
+                        <span className="text-xl sm:text-2xl font-bold text-slate-900">
                           {quizState.quizCards[quizState.currentCardIndex].word}
                         </span>
                         <button
                           onClick={() => toggleSpeech(quizState.quizCards[quizState.currentCardIndex].word)}
-                          className={`text-lg p-1 rounded transition cursor-pointer ${
+                          className={`text-sm p-1 rounded transition cursor-pointer ${
                             speakingText === quizState.quizCards[quizState.currentCardIndex].word
-                              ? 'bg-rose-600 text-white font-bold border border-rose-700'
+                              ? 'bg-rose-600 text-white hover:bg-rose-700 border border-rose-700'
                               : 'text-slate-400 hover:text-amber-600'
                           }`}
                         >
                           {speakingText === quizState.quizCards[quizState.currentCardIndex].word ? '⏹️' : '🔊'}
                         </button>
                       </div>
-                      <span className="text-xs sm:text-lg text-rose-600 font-semibold">
+                      <span className="text-xs sm:text-sm text-rose-600 font-semibold">
                         [{quizState.quizCards[quizState.currentCardIndex].reading}]
                       </span>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {quizState.options.map((option, idx) => {
                         const currentCard = quizState.quizCards[quizState.currentCardIndex];
                         let btnStyle = 'bg-white border-slate-200 hover:border-rose-300 text-slate-700';
@@ -1965,7 +1964,7 @@ export default function App() {
                             key={idx}
                             onClick={() => handleAnswerQuiz(option)}
                             disabled={quizState.selectedAnswer !== null}
-                            className={`w-full p-4 border rounded-xl text-left text-xs sm:text-lg font-medium transition cursor-pointer ${btnStyle}`}
+                            className={`w-full p-3 border rounded-xl text-left text-xs sm:text-sm font-medium transition cursor-pointer ${btnStyle}`}
                           >
                             {idx + 1}. {option}
                           </button>
@@ -1978,36 +1977,36 @@ export default function App() {
             )}
           </main>
 
-          <aside className="hidden lg:flex lg:col-span-3 bg-white border border-rose-100 shadow-xs rounded-2xl p-5 sm:p-6 flex-col h-fit sticky top-22 space-y-4.5">
-            <div className="bg-[#FAF8F5] p-4 rounded-xl border border-amber-100">
-              <div className="flex justify-between items-center mb-3 pb-2 border-b border-amber-200/60">
-                <h3 className="text-xs sm:text-lg font-bold text-slate-800 flex items-center gap-1.5">
+          <aside className="hidden lg:flex lg:col-span-3 bg-white border border-rose-100 shadow-xs rounded-2xl p-3.5 flex-col h-fit sticky top-16 space-y-3">
+            <div className="bg-[#FAF8F5] p-3 rounded-xl border border-amber-100">
+              <div className="flex justify-between items-center mb-2 pb-1 border-b border-amber-200/60">
+                <h3 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1">
                   <span>🈩</span> {t('gojuonChart')}
                 </h3>
-                <div className="flex bg-slate-200 p-1 rounded-lg text-xs sm:text-sm font-bold">
+                <div className="flex bg-slate-200 p-0.5 rounded text-[10px] font-bold">
                   <button
                     onClick={() => setKanaTab('hiragana')}
-                    className={`px-3 py-1 rounded-md transition cursor-pointer ${kanaTab === 'hiragana' ? 'bg-rose-600 text-white shadow-2xs' : 'text-slate-600'}`}
+                    className={`px-2 py-0.5 rounded transition cursor-pointer ${kanaTab === 'hiragana' ? 'bg-rose-600 text-white shadow-2xs' : 'text-slate-600'}`}
                   >
                     {t('hiragana')}
                   </button>
                   <button
                     onClick={() => setKanaTab('katakana')}
-                    className={`px-3 py-1 rounded-md transition cursor-pointer ${kanaTab === 'katakana' ? 'bg-rose-600 text-white shadow-2xs' : 'text-slate-600'}`}
+                    className={`px-2 py-0.5 rounded transition cursor-pointer ${kanaTab === 'katakana' ? 'bg-rose-600 text-white shadow-2xs' : 'text-slate-600'}`}
                   >
                     {t('katakana')}
                   </button>
                 </div>
               </div>
 
-              <div className="max-h-40 overflow-y-auto custom-scrollbar pr-0.5 space-y-1.5 text-center">
+              <div className="max-h-32 overflow-y-auto custom-scrollbar pr-0.5 space-y-1 text-center">
                 {(kanaTab === 'hiragana' ? HIRAGANA_GRID : KATAKANA_GRID).map((row: string[], rIdx: number) => (
-                  <div key={rIdx} className="grid grid-cols-5 gap-1.5">
+                  <div key={rIdx} className="grid grid-cols-5 gap-0.5">
                     {row.map((char: string, cIdx: number) => (
                       <span 
                         key={cIdx} 
                         onClick={() => toggleSpeech(char)}
-                        className="text-xs sm:text-base font-semibold bg-white border border-slate-200 rounded-lg py-1.5 cursor-pointer hover:bg-rose-50 hover:border-rose-300 hover:text-rose-600 transition"
+                        className="text-xs font-semibold bg-white border border-slate-200 rounded py-0.5 cursor-pointer hover:bg-rose-50 hover:border-rose-300 hover:text-rose-600 transition"
                       >
                         {char}
                       </span>
@@ -2018,29 +2017,29 @@ export default function App() {
             </div>
 
             <div className="flex flex-col min-h-0">
-              <div className="flex justify-between items-center pb-2.5 mb-2.5 border-b border-rose-50 shrink-0">
-                <h3 className="text-xs sm:text-lg font-bold text-slate-800 flex items-center gap-1.5">
+              <div className="flex justify-between items-center pb-1.5 mb-1.5 border-b border-rose-50 shrink-0">
+                <h3 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1">
                   <span>🌐</span> {t('recSitesTitle')}
                 </h3>
               </div>
 
-              <div className="space-y-3 pr-0.5">
+              <div className="space-y-2 pr-0.5">
                 {(RECOMMENDED_SITES[lang] || RECOMMENDED_SITES['ko']).map((site, idx) => (
                   <a
                     key={idx}
                     href={site.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="block p-3.5 bg-[#FAF8F5] rounded-xl border border-amber-100 hover:border-rose-300 hover:bg-rose-50/50 transition group"
+                    className="block p-2.5 bg-[#FAF8F5] rounded-xl border border-amber-100 hover:border-rose-300 hover:bg-rose-50/50 transition group"
                   >
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="text-sm sm:text-lg">{site.icon}</span>
-                      <span className="text-xs sm:text-lg font-bold text-slate-800 group-hover:text-rose-600 transition truncate">
+                    <div className="flex items-center space-x-1 mb-0.5">
+                      <span className="text-xs sm:text-sm">{site.icon}</span>
+                      <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-rose-600 transition truncate">
                         {site.name}
                       </span>
-                      <span className="text-xs sm:text-sm text-slate-400 ml-auto">↗</span>
+                      <span className="text-xs text-slate-400 ml-auto">↗</span>
                     </div>
-                    <p className="text-xs sm:text-base text-slate-500 leading-snug line-clamp-2">
+                    <p className="text-xs text-slate-500 leading-snug line-clamp-2">
                       {site.desc}
                     </p>
                   </a>
@@ -2051,9 +2050,9 @@ export default function App() {
         </div>
       </div>
 
-      {/* 🌸 푸터 영역 (원래 고유 크기 및 스케일 완전 보존) 🌸 */}
-      <footer className="w-full py-6 flex flex-col items-center justify-center border-t border-slate-200 bg-white mt-12 space-y-2 px-4 text-center text-xs">
-        <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 font-bold text-slate-600">
+      {/* 🌸 푸터 영역 (10% 확대 대상에서 제외하여 원래 고유 크기로 지정) 🌸 */}
+      <footer className="footer-area w-full py-6 flex flex-col items-center justify-center border-t border-slate-200 bg-white mt-12 space-y-2 px-4 text-center">
+        <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs font-bold text-slate-600">
           <button onClick={() => openLegalDoc('terms')} className="hover:text-rose-600 hover:underline cursor-pointer">
             {lang === 'ko' ? '서비스 이용약관' : 'Terms of Service'}
           </button>
@@ -2599,10 +2598,15 @@ export default function App() {
           text-rendering: optimizeLegibility;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
+          zoom: 1.1; /* 🌸 화면 전체 10% 확대 스케일 고정 */
         }
 
         body {
           line-height: 1.6;
+        }
+
+        .footer-area {
+          zoom: 0.909; /* 🌸 푸터 영역만 원래 100% 원본 비율로 보정 */
         }
 
         .app-logo-text, .app-logo-text * {
