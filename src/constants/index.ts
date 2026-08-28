@@ -172,7 +172,8 @@ export const DICT: Record<Lang, Record<string, string>> = {
     loginGateMsg: "문장 분석 기능은 로그인 후 이용하실 수 있습니다.",
     quizLockedTitle: "🔒 퀴즈 풀기는 프리미엄 전용 기능입니다",
     quizLockedDesc: "프리미엄에 가입하시고 무제한 단어 퀴즈와 문장 분석 혜택을 누려보세요!",
-    pdfLockedMsg: "PDF 시험지 생성 기능은 프리미엄 전용 서비스입니다."
+    pdfLockedMsg: "PDF 시험지 생성 기능은 프리미엄 전용 서비스입니다.",
+    googleServiceUnavailable: "⚠️ AI 서비스 이용량이 많아 반응이 지연되고 있습니다. 잠시 후 다시 시도해 주세요."
   },
   en: {
     analyzeTab: "Analyze",
@@ -312,7 +313,8 @@ export const DICT: Record<Lang, Record<string, string>> = {
     loginGateMsg: "Please log in to use the sentence analysis feature.",
     quizLockedTitle: "🔒 Quizzes are Premium Only",
     quizLockedDesc: "Upgrade to Premium to unlock unlimited quizzes and sentence analysis!",
-    pdfLockedMsg: "PDF Test Sheet generation is available exclusively for Premium members."
+    pdfLockedMsg: "PDF Test Sheet generation is available exclusively for Premium members.",
+    googleServiceUnavailable: "⚠️ High traffic on the AI service. Please try again in a moment."
   },
   'zh-CN': {
     analyzeTab: "句子分析",
@@ -452,7 +454,8 @@ export const DICT: Record<Lang, Record<string, string>> = {
     loginGateMsg: "请登录后使用句子分析功能。",
     quizLockedTitle: "🔒 单词测验为高级版专属功能",
     quizLockedDesc: "加入高级版，解锁无限测验与句子分析！",
-    pdfLockedMsg: "生成PDF测试卷功能仅供高级版用户使用。"
+    pdfLockedMsg: "生成PDF测试卷功能仅供高级版用户使用。",
+    googleServiceUnavailable: "⚠️ AI服务访问量较大，请稍后再试。"
   },
   'zh-TW': {
     analyzeTab: "句子分析",
@@ -592,7 +595,8 @@ export const DICT: Record<Lang, Record<string, string>> = {
     loginGateMsg: "請登入後使用句子分析功能。",
     quizLockedTitle: "🔒 單字測驗為高級版專屬功能",
     quizLockedDesc: "加入高級版，解鎖無限測驗與句子分析！",
-    pdfLockedMsg: "生成PDF測試卷功能僅供高級版用戶使用。"
+    pdfLockedMsg: "生成PDF測試卷功能僅供高級版用戶使用。",
+    googleServiceUnavailable: "⚠️ AI服務訪問人數較多，請稍後再試。"
   },
   ja: {
     analyzeTab: "文章分析",
@@ -732,7 +736,8 @@ export const DICT: Record<Lang, Record<string, string>> = {
     loginGateMsg: "文章解析機能のご利用にはログインが必要です。",
     quizLockedTitle: "🔒 単語テストはプレミアム限定機能です",
     quizLockedDesc: "プレミアムに登録して、無制限の単語テストと文章解析を活用しましょう！",
-    pdfLockedMsg: "PDFテスト用紙作成機能はプレミアム会員限定サービスです。"
+    pdfLockedMsg: "PDFテスト用紙作成機能はプレミアム会員限定サービスです。",
+    googleServiceUnavailable: "⚠️ AIサービスのアクセスが集中しております。しばらく経ってから再度お試しください。"
   }
 };
 
