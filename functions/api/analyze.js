@@ -115,40 +115,40 @@ export async function onRequestPost(context) {
       model: 'gemini-3.5-flash-lite',
       generationConfig: { 
         responseMimeType: 'application/json',
-        temperature: 0.2,
+        temperature: 0.1,
         maxOutputTokens: 2500
       }
     });
 
     let langGuide = "English";
-    if (targetLang === "zh-CN") langGuide = "Simplified Chinese (简体中文)";
-    else if (targetLang === "zh-TW") langGuide = "Traditional Chinese (繁體中文)";
-    else if (targetLang === "ko") langGuide = "Korean (한국어)";
-    else if (targetLang === "ja") langGuide = "Japanese (日本語)";
+    if (targetLang === "zh-CN") langGuide = "Simplified Chinese";
+    else if (targetLang === "zh-TW") langGuide = "Traditional Chinese";
+    else if (targetLang === "ko") langGuide = "Korean";
+    else if (targetLang === "ja") langGuide = "Japanese";
 
-    // 🌸 최적화된 프롬프트 (불필요 토큰 제거 및 해석 속도 대폭 향상)
-    let promptText = `Analyze input Japanese for language learner. Respond ONLY in valid JSON.
-Target Translation Language: "${targetLang}" (${langGuide})
+    // 🌸 영문 가중 최적화 프롬프트 (Ultra-lightweight)
+    let promptText = `Task: Analyze Japanese input for learners. Output JSON ONLY.
+Target Language: "${targetLang}" (${langGuide})
 
-RULES:
-1. "translatedText": plain single string translation in target language.
-2. "partOfSpeech" in wordList: ONLY one of ["noun", "verb", "adjective", "adverb", "particle", "conjunction", "auxiliary verb", "expression", "prefix", "suffix"].
-3. "meaning" & "explanation": multi-lang object with keys: ["ko", "en", "zh-CN", "zh-TW", "ja"].
+Schema Rules:
+- "translatedText": Full text translation in target language (string).
+- "partOfSpeech": Standard code strictly from ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
+- "meaning" & "explanation": Multilingual map with keys ["ko","en","zh-CN","zh-TW","ja"].
 
-JSON SCHEMA:
+JSON Output Format:
 {
   "isJapanese": true,
   "translatedText": "string",
   "rubySentences": ["<ruby>私<rt>わたし</rt></ruby>は..."],
   "kanjiList": [{"kanji": "私", "readings": "わたし", "meaning": {"ko": "나", "en": "I"}}],
   "wordList": [{"word": "学生", "reading": "がくせい", "partOfSpeech": "noun", "meaning": {"ko": "학생", "en": "student"}, "jlpt": "N5"}],
-  "grammarList": [{"grammar": "입니다", "explanation": {"ko": "~입니다", "en": "is/am/are"}}]
+  "grammarList": [{"grammar": "です", "explanation": {"ko": "~입니다", "en": "is/am/are"}}]
 }
 
 `;
 
-    if (text) promptText += `[Input Text]: "${text}"\n`;
-    if (imageBase64) promptText += `[Instruction]: Extract and analyze Japanese text from the attached image.\n`;
+    if (text) promptText += `Input: "${text}"\n`;
+    if (imageBase64) promptText += `Instruction: OCR and analyze Japanese text in image.\n`;
 
     const parts = [{ text: promptText }];
     if (imageBase64) {
