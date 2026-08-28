@@ -1,5 +1,19 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+// 구글 API 호출 실패 시 백엔드 내부 자동 재시도 함수
+async function generateWithRetry(model, contents, retries = 2, delay = 1000) {
+  try {
+    return await model.generateContent({ contents });
+  } catch (err) {
+    const errStr = String(err?.message || err || '');
+    if ((errStr.includes("503") || errStr.includes("Service Unavailable") || errStr.includes("high demand")) && retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return generateWithRetry(model, contents, retries - 1, delay * 1.5);
+    }
+    throw err;
+  }
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
 
@@ -97,12 +111,12 @@ export async function onRequestPost(context) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // 🌸 gemini-3.5-flash-lite 모델 유지 및 호환 가능한 기본 옵션 설정
     const model = genAI.getGenerativeModel({
       model: 'gemini-3.5-flash-lite',
       generationConfig: { 
         responseMimeType: 'application/json',
-        temperature: 0.2
+        temperature: 0.2,
+        maxOutputTokens: 2500
       }
     });
 
@@ -112,30 +126,36 @@ export async function onRequestPost(context) {
     else if (targetLang === "ko") langGuide = "Korean (한국어)";
     else if (targetLang === "ja") langGuide = "Japanese (日本語)";
 
-    let promptText = 'You are a professional Japanese language tutor. Analyze the following Japanese input and respond strictly in valid JSON format.\n';
-    promptText += 'CRITICAL INSTRUCTIONS:\n';
-    promptText += '1. "translatedText" MUST be a SINGLE plain string containing the full natural translation of the entire input text in the target language: "' + targetLang + '" (' + langGuide + '). Do NOT make it an object.\n';
-    promptText += '2. "partOfSpeech" inside "wordList" MUST ALWAYS be a standardized English category code: "noun", "verb", "adjective", "adverb", "particle", "conjunction", "auxiliary verb", "expression", "prefix", or "suffix". NEVER use Korean, Chinese, or Japanese in partOfSpeech.\n';
-    promptText += '3. For "meaning" and "explanation" fields inside lists, provide translations as a multi-language object.\n\n';
+    // 🌸 최적화된 프롬프트 (불필요 토큰 제거 및 해석 속도 대폭 향상)
+    let promptText = `Analyze input Japanese for language learner. Respond ONLY in valid JSON.
+Target Translation Language: "${targetLang}" (${langGuide})
 
-    if (text) promptText += '[Input Text]: "' + text + '"\n';
-    if (imageBase64) promptText += '[Instruction]: Extract and analyze the Japanese text from the attached image.\n';
+RULES:
+1. "translatedText": plain single string translation in target language.
+2. "partOfSpeech" in wordList: ONLY one of ["noun", "verb", "adjective", "adverb", "particle", "conjunction", "auxiliary verb", "expression", "prefix", "suffix"].
+3. "meaning" & "explanation": multi-lang object with keys: ["ko", "en", "zh-CN", "zh-TW", "ja"].
 
-    promptText += '\n[Required JSON Schema Example]:\n{\n' +
-      '  "isJapanese": true,\n' +
-      '  "translatedText": "This is a student.",\n' +
-      '  "rubySentences": ["<ruby>私<rt>わたし</rt></ruby>は<ruby>学生<rt>がくせい</rt></ruby>です。"],\n' +
-      '  "kanjiList": [{"kanji": "私", "readings": "わたし", "meaning": {"ko": "나", "en": "I, me", "zh-CN": "我", "zh-TW": "我", "ja": "わたし"}}],\n' +
-      '  "wordList": [{"word": "学生", "reading": "がくせい", "partOfSpeech": "noun", "meaning": {"ko": "학생", "en": "student", "zh-CN": "学生", "zh-TW": "學生", "ja": "がくせい"}, "jlpt": "N5"}],\n' +
-      '  "grammarList": [{"grammar": "です", "explanation": {"ko": "~입니다", "en": "is/am/are", "zh-CN": "是", "zh-TW": "是", "ja": "〜です"}}]\n' +
-      '}';
+JSON SCHEMA:
+{
+  "isJapanese": true,
+  "translatedText": "string",
+  "rubySentences": ["<ruby>私<rt>わたし</rt></ruby>は..."],
+  "kanjiList": [{"kanji": "私", "readings": "わたし", "meaning": {"ko": "나", "en": "I"}}],
+  "wordList": [{"word": "学生", "reading": "がくせい", "partOfSpeech": "noun", "meaning": {"ko": "학생", "en": "student"}, "jlpt": "N5"}],
+  "grammarList": [{"grammar": "입니다", "explanation": {"ko": "~입니다", "en": "is/am/are"}}]
+}
+
+`;
+
+    if (text) promptText += `[Input Text]: "${text}"\n`;
+    if (imageBase64) promptText += `[Instruction]: Extract and analyze Japanese text from the attached image.\n`;
 
     const parts = [{ text: promptText }];
     if (imageBase64) {
       parts.push({ inlineData: { mimeType: imageBase64.mimeType, data: imageBase64.data } });
     }
 
-    const result = await model.generateContent({ contents: [{ role: 'user', parts: parts }] });
+    const result = await generateWithRetry(model, [{ role: 'user', parts: parts }]);
     let rawText = result.response.text() || '{}';
     let cleanedJsonText = rawText.split('```json').join('').split('```').join('').trim();
     const parsedData = JSON.parse(cleanedJsonText);
