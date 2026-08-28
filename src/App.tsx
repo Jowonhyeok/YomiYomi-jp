@@ -193,19 +193,6 @@ export default function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLeftSidebarOpenMobile, setIsLeftSidebarOpenMobile] = useState(false);
 
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      const existingFavicons = document.querySelectorAll("link[rel*='icon']");
-      existingFavicons.forEach(el => el.parentNode?.removeChild(el));
-
-      const link = document.createElement('link');
-      link.type = 'image/svg+xml';
-      link.rel = 'icon';
-      link.href = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌸</text></svg>';
-      document.getElementsByTagName('head')[0].appendChild(link);
-    }
-  }, []);
-
   const [isHeaderLangOpen, setIsHeaderLangOpen] = useState(false);
   const headerLangRef = useRef<HTMLDivElement>(null);
 
@@ -484,7 +471,7 @@ export default function App() {
         await signOut(auth);
       } catch (e) {
         console.error("SignOut error:", e);
-      } finally {
+      } flexily {
         setCurrentUser(null);
         setDecks([DEFAULT_DECK_DATA]);
         setIsSettingsModalOpen(false);
@@ -1004,7 +991,6 @@ export default function App() {
 
   const currentLangObj = LANG_OPTIONS.find(l => l.code === lang) || LANG_OPTIONS[0];
 
-  // 요금제 모달 텍스트 다국어 사전
   const payModalI18n = {
     ko: {
       title: '프리미엄 이용권 구매',
@@ -1100,7 +1086,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-slate-800 font-sans border-t-4 border-rose-600 relative pb-20 flex flex-col justify-between">
       <div>
-        {/* 🌸 헤더 영역 (그리드 레이아웃 적용으로 로고 완벽 중앙 정렬) 🌸 */}
+        {/* 🌸 헤더 영역 (로고 중앙 정렬) 🌸 */}
         <header className="bg-white border-b border-rose-100 shadow-2xs sticky top-0 z-40 h-14">
           <div className="max-w-7xl mx-auto px-3 sm:px-4 h-full grid grid-cols-3 items-center">
             
@@ -1128,7 +1114,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* 중앙: 정중앙 로고 위치 */}
+            {/* 중앙: 로고 */}
             <div className="flex items-center justify-center">
               <button 
                 onClick={() => setActiveTab('analyze')}
@@ -1147,7 +1133,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* 우측: 우측 상단 버튼 그룹 */}
+            {/* 우측: 버튼 그룹 */}
             <div className="flex items-center justify-end space-x-1.5 sm:space-x-2">
               <button
                 onClick={() => setIsPricingModalOpen(true)}
@@ -2095,7 +2081,7 @@ export default function App() {
         </p>
       </footer>
 
-      {/* 💳 프리미엄 이용권 요금제 모달 (전 언어 다국어 완벽 지원) 💳 */}
+      {/* 요금제 모달 */}
       {isPricingModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-rose-100 relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
@@ -2159,7 +2145,6 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {/* 1. 3개월 이용권 */}
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition">
                     <div>
                       <span className="text-xs font-bold text-slate-500 block mb-1">
@@ -2179,7 +2164,6 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* 2. 1년 이용권 */}
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition relative">
                     <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                       20% OFF
@@ -2202,7 +2186,6 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* 3. 평생 이용권 */}
                   <div className="p-4 bg-rose-50/80 border border-rose-300 rounded-2xl flex flex-col justify-between text-center relative shadow-xs">
                     <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                       BEST
@@ -2236,7 +2219,7 @@ export default function App() {
         document.body
       )}
 
-      {/* 📂 단어장 생성 모달 (최대 20자 글자수 제한 적용) 📂 */}
+      {/* 단어장 생성 모달 */}
       {isNewDeckModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-90 bg-slate-900/50 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-rose-100 relative">
