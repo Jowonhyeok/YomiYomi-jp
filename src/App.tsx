@@ -519,7 +519,7 @@ export default function App() {
     });
   };
 
-  // 🌸 레몬스퀴지 공식 결제 호출 함수 (URL 호환성 보정)
+  // 🌸 레몬스퀴지 결제 호출 함수 (예외 차단 및 하드코딩 Fallback 탑재)
   const handleLemonSqueezyPayment = (planName: string, checkoutUrlRaw: string) => {
     if (!agreePayPolicy) {
       showAlert(lang === 'ko' ? "결제 약관 및 이용 정책에 동의해 주세요." : "Please agree to the payment policy terms.");
@@ -534,12 +534,16 @@ export default function App() {
 
     sessionStorage.setItem('pendingPlanName', planName);
 
-    let baseUrl = (checkoutUrlRaw && checkoutUrlRaw !== 'undefined') ? checkoutUrlRaw.trim() : '';
+    let baseUrl = '';
+
+    if (checkoutUrlRaw && typeof checkoutUrlRaw === 'string' && checkoutUrlRaw.startsWith('http')) {
+      baseUrl = checkoutUrlRaw.trim();
+    }
 
     if (!baseUrl) {
-      if (planName.includes('3개월') || planName.includes('3-Month') || planName.includes('3 month')) {
+      if (planName.includes('3개월') || planName.includes('3-Month') || planName.includes('3 month') || planName.includes('3ヶ月')) {
         baseUrl = 'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/c190392a-86b8-4828-a4d6-dd88e54d8e53';
-      } else if (planName.includes('1년') || planName.includes('1-Year') || planName.includes('1 year')) {
+      } else if (planName.includes('1년') || planName.includes('1-Year') || planName.includes('1 year') || planName.includes('1年')) {
         baseUrl = 'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/3302e962-c15b-42b1-afda-f4272bd3a424';
       } else {
         baseUrl = 'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/c74e6951-6422-4bfe-a38d-ed18e989371d';
@@ -562,7 +566,7 @@ export default function App() {
       }
     } catch (err) {
       console.error('[LemonSqueezy URL Build Error]:', err);
-      showAlert('결제 주소를 생성하는 중 오류가 발생했습니다. 다시 시도해 주세요.');
+      window.open(baseUrl || 'https://yomiyomi-jp.lemonsqueezy.com', '_blank');
     }
   };
 
@@ -2185,7 +2189,7 @@ export default function App() {
                       disabled={!agreePayPolicy}
                       onClick={() => handleLemonSqueezyPayment(
                         payModalI18n.pass3m, 
-                        import.meta.env.VITE_LEMON_VARIANT_3MONTH || 'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/c190392a-86b8-4828-a4d6-dd88e54d8e53'
+                        'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/c190392a-86b8-4828-a4d6-dd88e54d8e53'
                       )}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
@@ -2211,7 +2215,7 @@ export default function App() {
                       disabled={!agreePayPolicy}
                       onClick={() => handleLemonSqueezyPayment(
                         payModalI18n.pass1y, 
-                        import.meta.env.VITE_LEMON_VARIANT_1YEAR || 'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/3302e962-c15b-42b1-afda-f4272bd3a424'
+                        'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/3302e962-c15b-42b1-afda-f4272bd3a424'
                       )}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
@@ -2237,7 +2241,7 @@ export default function App() {
                       disabled={!agreePayPolicy}
                       onClick={() => handleLemonSqueezyPayment(
                         payModalI18n.passLife, 
-                        import.meta.env.VITE_LEMON_VARIANT_LIFETIME || 'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/c74e6951-6422-4bfe-a38d-ed18e989371d'
+                        'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/c74e6951-6422-4bfe-a38d-ed18e989371d'
                       )}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
