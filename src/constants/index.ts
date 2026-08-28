@@ -4,7 +4,7 @@ export const PORTONE_STORE_ID = "store-96a3d482-0e51-4723-9ab8-59a55fb52159";
 export const CHANNEL_KEY_KAKAOPAY = "channel-key-e2b91f60-183c-4b53-a783-752cf3bfbb8c";
 export const CHANNEL_KEY_EXIMBAY = "channel-key-8d2ca50f-f661-4d7b-9ae1-e2d0ceda6c6a";
 
-export const MAX_TEXT_LENGTH = 2500;
+export const MAX_TEXT_LENGTH = 1500;
 
 export const HIRAGANA_GRID: string[][] = [
   ['あ', 'い', 'う', 'え', 'お'],

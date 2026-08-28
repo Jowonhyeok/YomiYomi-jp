@@ -16,7 +16,6 @@ import { auth, googleProvider, db } from './firebase';
 
 import type { Lang, KanjiInfo, WordInfo, GrammarInfo, AnalysisResult, Deck, UserProfile } from './types';
 import { 
-  MAX_TEXT_LENGTH, 
   HIRAGANA_GRID, 
   KATAKANA_GRID, 
   DICT, 
@@ -39,6 +38,9 @@ import type { LegalDocType, LegalDocument } from './constants/legal';
 import { useUserStore } from './store/useUserStore';
 import { useDeckStore } from './store/useDeckStore';
 import { useUIStore } from './store/useUIStore';
+
+// 🌸 입력 글자 수 최대 한도 1,500자로 고정
+const MAX_TEXT_LENGTH = 1500;
 
 declare global {
   interface Window {
@@ -536,7 +538,6 @@ export default function App() {
     });
   };
 
-  // 🌸 웹훅 데이터(user_id, plan_name)를 레몬스퀴지 매개변수로 안전 전달
   const handleLemonSqueezyPayment = (planName: string, checkoutUrlRaw: string) => {
     if (!agreePayPolicy) {
       showAlert(t('agreePayPolicyRequired'));
@@ -574,7 +575,6 @@ export default function App() {
         validUrl.searchParams.set('checkout[email]', currentUser.email);
       }
 
-      // 🌸 웹훅(Webhook)용 Custom Data 매개변수 바인딩
       validUrl.searchParams.set('checkout[custom][user_id]', currentUser.id);
       validUrl.searchParams.set('checkout[custom][plan_name]', planName);
 
