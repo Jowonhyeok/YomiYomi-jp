@@ -1,4 +1,4 @@
-// 구글 Gemini REST API 다이렉트 호출 함수 (gemini-3.5-flash-lite 고정 + 지수 백오프/지터)
+// 구글 Gemini REST API 다이렉트 호출 함수 (gemini-3.5-flash-lite)
 async function fetchGeminiDirect(apiKey, payload, retries = 3, initialDelay = 1000) {
   const targetModel = 'gemini-3.5-flash-lite';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
@@ -22,11 +22,9 @@ async function fetchGeminiDirect(apiKey, payload, retries = 3, initialDelay = 10
         }
       }
 
-      // 503(과부하) 또는 429(Rate Limit) 발생 시 지수 백오프 + 랜덤 지터 적용
       if ((response.status === 503 || response.status === 429) && attempt < retries - 1) {
         const jitter = Math.random() * 500;
         const waitTime = currentDelay + jitter;
-        console.warn(`[Gemini API Warning] Status ${response.status}. ${Math.round(waitTime)}ms 후 재시도 (${attempt + 1}/${retries})`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
         currentDelay *= 2;
         continue;
@@ -38,7 +36,6 @@ async function fetchGeminiDirect(apiKey, payload, retries = 3, initialDelay = 10
       if (attempt === retries - 1) throw err;
       const jitter = Math.random() * 500;
       const waitTime = currentDelay + jitter;
-      console.warn(`[Gemini Request Exception] ${err.message}. ${Math.round(waitTime)}ms 후 재시도 (${attempt + 1}/${retries})`);
       await new Promise(resolve => setTimeout(resolve, waitTime));
       currentDelay *= 2;
     }
@@ -87,7 +84,7 @@ export async function onRequestPost(context) {
     });
   }
 
-  // 2. 유저 정보 및 사용량 조회
+  // 2. 유저 데이터 조회
   let userData = {};
   try {
     const userDocRes = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`, {
@@ -127,7 +124,7 @@ export async function onRequestPost(context) {
     const today = new Date().toISOString().split('T')[0];
     let dailyCount = userData.lastAnalyzeDate === today ? (userData.dailyAnalyzeCount || 0) : 0;
 
-    // 🛡️ 유저 및 기기 제한 검증
+    // 일일 한도 검증
     if (!isSubscribed && dailyCount >= 3) {
       return new Response(JSON.stringify({ error: 'DAILY_LIMIT_EXCEEDED', message: '오늘의 무료 분석 횟수(3회)를 모두 사용하셨습니다.' }), {
         status: 429,
@@ -188,7 +185,6 @@ export async function onRequestPost(context) {
       parts.push({ text: "Instruction: Perform OCR and analyze Japanese text in image." });
     }
 
-    // 🌸 요청 복잡도 최솟화 및 명확한 필드 생성 강제 프롬프트
     const payload = {
       systemInstruction: {
         parts: [{
@@ -241,6 +237,7 @@ JSON Schema Example:
       }
     };
 
+    // 🌸 3. Gemini API 직접 호출
     const apiResult = await fetchGeminiDirect(apiKey, payload);
     const rawText = apiResult.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     
@@ -270,27 +267,12 @@ JSON Schema Example:
       throw new Error(`FAILED_TO_PARSE_GEMINI_RESPONSE: ${rawText.slice(0, 100)}`);
     }
 
-    // 3. 비동기 백그라운드 DB 카운트 업데이트
+    // 🌸 4. 안전한 백그라운드 DB 카운트 업데이트 (DB 오류가 나더라도 유저 응답 500 차단)
     if (context.waitUntil) {
-      const asyncTasks = [
-        fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
-          method: 'PATCH',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}` 
-          },
-          body: JSON.stringify({
-            fields: {
-              dailyAnalyzeCount: { integerValue: String(dailyCount + 1) },
-              lastAnalyzeDate: { stringValue: today }
-            }
-          })
-        })
-      ];
-
-      if (isValidDeviceId) {
-        asyncTasks.push(
-          fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/devices/${deviceId}_${today}`, {
+      context.waitUntil((async () => {
+        try {
+          // 유저 일일 분석 횟수 카운트 증가
+          await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`, {
             method: 'PATCH',
             headers: { 
               'Content-Type': 'application/json',
@@ -298,18 +280,34 @@ JSON Schema Example:
             },
             body: JSON.stringify({
               fields: {
-                count: { integerValue: String(deviceUsageCount + 1) }
+                dailyAnalyzeCount: { integerValue: String(dailyCount + 1) },
+                lastAnalyzeDate: { stringValue: today }
               }
             })
-          })
-        );
-      }
+          });
 
-      context.waitUntil(
-        Promise.all(asyncTasks).catch(err => console.error('Firestore Async Update Warning:', err))
-      );
+          // 디바이스 일일 분석 횟수 카운트 증가
+          if (isValidDeviceId) {
+            await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/devices/${deviceId}_${today}`, {
+              method: 'PATCH',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}` 
+              },
+              body: JSON.stringify({
+                fields: {
+                  count: { integerValue: String(deviceUsageCount + 1) }
+                }
+              })
+            });
+          }
+        } catch (dbUpdateErr) {
+          console.warn('[Background DB Counter Update Suppressed Error]:', dbUpdateErr);
+        }
+      })());
     }
 
+    // 🌸 5. Gemini 분석 완료 결과 즉시 반환 (HTTP 200)
     return new Response(JSON.stringify(parsedData), {
       status: 200,
       headers: {

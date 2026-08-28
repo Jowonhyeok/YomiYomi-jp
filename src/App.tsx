@@ -128,7 +128,7 @@ export default function App() {
     }
   }, [setLang]);
 
-  // 🌸 레몬스퀴지 결제 성공 시 즉시 세션 및 파이어베이스 세션 강제 갱신
+  // 🌸 레몬스퀴지 결제 성공 시 토큰 강제 갱신 및 화면 정돈
   useEffect(() => {
     if (typeof window !== 'undefined') {
       if (window.createLemonSqueezy) {
@@ -144,7 +144,7 @@ export default function App() {
 
               if (auth.currentUser) {
                 try {
-                  const idToken = await auth.currentUser.getIdToken(true); // 강제 토큰 갱신
+                  const idToken = await auth.currentUser.getIdToken(true);
                   const verifyRes = await fetch('/api/payments/verify', {
                     method: 'POST',
                     headers: {
@@ -171,7 +171,6 @@ export default function App() {
                     setAgreePayPolicy(false);
                     sessionStorage.removeItem('pendingPlanName');
                     
-                    // 결제 성공 시 페이지 정보를 산뜻하게 원복 및 즉시 새로고침
                     showAlert(`🎉 ${planName} ${t('paymentSuccessAlert')}`);
                     setTimeout(() => {
                       window.location.reload();
@@ -475,7 +474,6 @@ export default function App() {
     }
   };
 
-  // 🌸 로그아웃 시 홈페이지 새로고침(reload) 적용
   const handleLogout = () => {
     showConfirm(t('logoutConfirm'), async () => {
       try {
@@ -486,7 +484,6 @@ export default function App() {
         setCurrentUser(null);
         setDecks([DEFAULT_DECK_DATA]);
         setIsSettingsModalOpen(false);
-        // 로그아웃 후 깔끔한 세션 청소를 위해 새로고침 수행
         if (typeof window !== 'undefined') {
           window.location.reload();
         }
@@ -539,6 +536,7 @@ export default function App() {
     });
   };
 
+  // 🌸 웹훅 데이터(user_id, plan_name)를 레몬스퀴지 매개변수로 안전 전달
   const handleLemonSqueezyPayment = (planName: string, checkoutUrlRaw: string) => {
     if (!agreePayPolicy) {
       showAlert(t('agreePayPolicyRequired'));
@@ -575,6 +573,10 @@ export default function App() {
       if (currentUser.email) {
         validUrl.searchParams.set('checkout[email]', currentUser.email);
       }
+
+      // 🌸 웹훅(Webhook)용 Custom Data 매개변수 바인딩
+      validUrl.searchParams.set('checkout[custom][user_id]', currentUser.id);
+      validUrl.searchParams.set('checkout[custom][plan_name]', planName);
 
       const finalUrlString = validUrl.toString();
 
