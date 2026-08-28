@@ -33,7 +33,6 @@ function extractCleanJson(rawText) {
   
   if (firstBrace !== -1) {
     if (lastBrace === -1 || lastBrace < firstBrace) {
-      // 토큰 잘림으로 '}'가 없는 경우 자동 닫기 처리
       cleaned = cleaned.substring(firstBrace) + '}';
     } else {
       cleaned = cleaned.substring(firstBrace, lastBrace + 1);
@@ -41,6 +40,42 @@ function extractCleanJson(rawText) {
   }
   
   return cleaned;
+}
+
+// 🌸 Firestore 유저 카운트 증가 처리 함수 (REST API)
+async function updateUserUsageCount(firebaseApiKey, uid) {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const userDocUrl = `https://firestore.googleapis.com/v1/projects/yomiyomi-jp/databases/(default)/documents/users/${uid}?key=${firebaseApiKey}`;
+
+    // 1. 기존 유저 정보 조회
+    const getRes = await fetch(userDocUrl);
+    if (!getRes.ok) return;
+
+    const userData = await getRes.json();
+    const fields = userData.fields || {};
+
+    const lastAnalyzeDate = fields.lastAnalyzeDate?.stringValue || '';
+    const currentCount = fields.dailyAnalyzeCount?.integerValue ? parseInt(fields.dailyAnalyzeCount.integerValue) : 0;
+
+    // 날짜가 바뀌었으면 1로 초기화, 같은 날이면 +1 증가
+    const newCount = (lastAnalyzeDate === today) ? currentCount + 1 : 1;
+
+    // 2. Firestore 문서 업데이트 (PATCH)
+    const updateUrl = `${userDocUrl}&updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`;
+    await fetch(updateUrl, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          dailyAnalyzeCount: { integerValue: newCount },
+          lastAnalyzeDate: { stringValue: today }
+        }
+      })
+    });
+  } catch (e) {
+    console.error("Failed to update usage count in Firestore:", e);
+  }
 }
 
 export async function onRequestPost(context) {
@@ -59,8 +94,9 @@ export async function onRequestPost(context) {
   }
 
   const idToken = authHeader.split('Bearer ')[1];
+  let uid = '';
 
-  // 2. Firebase ID Token 검증
+  // 2. Firebase ID Token 검증 및 uid 추출
   try {
     const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`, {
       method: 'POST',
@@ -74,6 +110,9 @@ export async function onRequestPost(context) {
         headers: { 'Content-Type': 'application/json' }
       });
     }
+
+    const verifyData = await verifyRes.json();
+    uid = verifyData.users?.[0]?.localId || '';
   } catch (err) {
     return new Response(JSON.stringify({ error: 'AUTH_VERIFY_FAILED', message: err.message }), {
       status: 401,
@@ -148,6 +187,11 @@ JSON Schema:
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
+    }
+
+    // 🌸 4. 분석 성공 시 Firestore의 사용 횟수 업데이트
+    if (uid && firebaseApiKey) {
+      context.waitUntil(updateUserUsageCount(firebaseApiKey, uid));
     }
 
     return new Response(JSON.stringify(parsedData), {

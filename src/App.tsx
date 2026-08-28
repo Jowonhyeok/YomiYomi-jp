@@ -694,6 +694,18 @@ export default function App() {
       return;
     }
 
+    // 🌸 무료 사용자 3회 초과 시 사전 차단
+    const isPremiumUser = currentUser.isSubscribed;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isToday = currentUser.lastAnalyzeDate === todayStr;
+    const currentCount = isToday ? (currentUser.dailyAnalyzeCount || 0) : 0;
+
+    if (!isPremiumUser && currentCount >= 3) {
+      showAlert(t('dailyLimitReached'));
+      setIsPricingModalOpen(true);
+      return;
+    }
+
     if (!inputText.trim() && !selectedImage) return;
     if (isAnalyzing || isCoolingDown) return;
 
