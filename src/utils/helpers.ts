@@ -8,7 +8,7 @@ export async function fetchWithRetry(url: string, options: RequestInit): Promise
 export async function analyzeJapanese(
   text: string, 
   lang: Lang, 
-  image?: { mimeType: string; data: string }, 
+  image?: { mimeType: string; data: string } | null, 
   deviceId?: string | null
 ): Promise<AnalysisResult> {
   const currentUser = auth.currentUser;
@@ -32,13 +32,20 @@ export async function analyzeJapanese(
     })
   });
 
-  const resData = await response.json();
+  const resText = await response.text();
+  let resData: any = {};
+
+  try {
+    resData = JSON.parse(resText);
+  } catch (e) {
+    console.error("Non-JSON Response Received:", resText);
+    throw new Error(`SERVER_ERROR_${response.status}: 서버 응답 형식이 올바르지 않습니다.`);
+  }
 
   if (!response.ok || resData.error) {
     throw new Error(resData.message || resData.error || "ANALYSIS_FAILED");
   }
 
-  // 🌸 핵심 고정 로직: 결과 객체에 분석 당시 요청 언어(resultLang)를 고정 저장
   return {
     ...resData,
     resultLang: lang

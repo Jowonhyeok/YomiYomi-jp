@@ -160,7 +160,6 @@ export default function App() {
                     })
                   });
 
-                  // 레몬스퀴지 파싱 방어 로직 적용
                   let verifyData: any = {};
                   try {
                     verifyData = await verifyRes.json();
@@ -1585,7 +1584,7 @@ export default function App() {
 
                                   return (
                                     <p key={sIdx} className="leading-relaxed">
-                                      {tokens.map((token, tIdx) => {
+                                      {tokens.map((token: { text: string; reading?: string }, tIdx: number) => {
                                         if (!token.reading) {
                                           return <span key={tIdx}>{token.text}</span>;
                                         }
