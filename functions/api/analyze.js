@@ -22,7 +22,7 @@ async function fetchGeminiDirect(apiKey, payload) {
   throw new Error(`GEMINI_API_ERROR_${response.status}: ${resText}`);
 }
 
-// 2,500자 입력 대응 강건한 JSON 추출 유틸리티
+// 안전한 JSON 추출 유틸리티
 function extractCleanJson(rawText) {
   if (!rawText || typeof rawText !== 'string') return '{}';
   
@@ -44,7 +44,7 @@ export async function onRequestPost(context) {
   // 1. Firebase API Key 환경변수 체크
   const firebaseApiKey = env.VITE_FIREBASE_API_KEY || env.FIREBASE_API_KEY;
   if (!firebaseApiKey) {
-    return new Response(JSON.stringify({ error: 'CONFIG_ERROR', message: 'VITE_FIREBASE_API_KEY 환경변수가 설정되지 않았습니다.' }), {
+    return new Response(JSON.stringify({ error: 'CONFIG_ERROR', message: 'VITE_FIREBASE_API_KEY 환경변수가 설정되지 않았증니다.' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -95,10 +95,12 @@ export async function onRequestPost(context) {
   try {
     const body = await request.json().catch(() => ({}));
     const { text = '', targetLang = 'en', imageBase64 = null } = body;
-    const MAX_INPUT_TEXT = 2500;
+    
+    // 🌸 입력 제한을 1,500자로 변경
+    const MAX_INPUT_TEXT = 1500;
 
     if (text && text.length > MAX_INPUT_TEXT) {
-      return new Response(JSON.stringify({ error: 'TEXT_TOO_LONG', message: '텍스트 길이가 제한(2,500자)을 초과했습니다.' }), {
+      return new Response(JSON.stringify({ error: 'TEXT_TOO_LONG', message: '텍스트 길이가 제한(1,500자)을 초과했습니다.' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -131,15 +133,15 @@ export async function onRequestPost(context) {
     const payload = {
       systemInstruction: {
         parts: [{
-          text: `Task: Analyze Japanese text for language learners up to 2500 characters. Output JSON ONLY.
+          text: `Task: Analyze Japanese text for language learners up to 1500 characters. Output JSON ONLY.
 Target Language for All Meanings & Explanations: "${langGuide}" (${targetLang})
 
 STRICT OUTPUT RULES:
 1. Output MUST be valid JSON only without markdown formatting.
 2. "rubySentences": Split text into sentences and convert all Japanese kanji using <ruby>漢字<rt>かんじ</rt></ruby> tags.
-3. "wordList": Extract top key vocabulary (max 25 items to ensure fast response and avoid token overflow).
-4. "kanjiList": Extract unique key kanji (max 20 items).
-5. "grammarList": Extract key grammar structures (max 10 items).
+3. "wordList": Extract key vocabulary (max 20 items).
+4. "kanjiList": Extract unique key kanji (max 15 items).
+5. "grammarList": Extract key grammar structures (max 8 items).
 6. "partOfSpeech": MUST be strictly one from: ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
 
 JSON Schema:
@@ -178,7 +180,7 @@ JSON Schema:
       generationConfig: {
         responseMimeType: 'application/json',
         temperature: 0.1,
-        maxOutputTokens: 8192 // 🌸 2,500자 전체 분량용 토큰 최대 상한 적용
+        maxOutputTokens: 4096 // 🌸 1,500자용 최적 토큰 상한
       }
     };
 
