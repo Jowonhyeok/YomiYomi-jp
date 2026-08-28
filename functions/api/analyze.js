@@ -1,4 +1,4 @@
-// 구글 Gemini REST API 다이렉트 호출 함수 (gemini-3.5-flash-lite 정식 적용)
+// 구글 Gemini REST API 다이렉트 호출 함수 (gemini-3.5-flash-lite)
 async function fetchGeminiDirect(apiKey, payload) {
   const targetModel = 'gemini-3.5-flash-lite';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
@@ -22,28 +22,17 @@ async function fetchGeminiDirect(apiKey, payload) {
   throw new Error(`GEMINI_API_ERROR_${response.status}: ${resText}`);
 }
 
-// JSON 안심 파싱 유틸리티 (500 파싱 에러 방지용 정규식 강화)
+// JSON 안심 파싱 유틸리티 (중첩 정교화)
 function extractCleanJson(rawText) {
   if (!rawText || typeof rawText !== 'string') return '{}';
   
-  // 마크다운 백틱 및 앞뒤 공백 완전 제거
   let cleaned = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
   
-  // JSON 시작({)과 끝(})을 찾아 불필요한 인간 친화적 텍스트(Here is the result 등) 도려내기
   const firstBrace = cleaned.indexOf('{');
   const lastBrace = cleaned.lastIndexOf('}');
   
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
-    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-  } else {
-    // 배열 형태([])로 응답이 올 경우에 대비
-    const firstBracket = cleaned.indexOf('[');
-    const lastBracket = cleaned.lastIndexOf(']');
-    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket >= firstBracket) {
-      cleaned = cleaned.substring(firstBracket, lastBracket + 1);
-    } else {
-       return '{}'; // 파싱 불가능한 텍스트일 경우 빈 객체 반환
-    }
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    return cleaned.substring(firstBrace, lastBrace + 1);
   }
   
   return cleaned;
@@ -127,17 +116,16 @@ export async function onRequestPost(context) {
           text: `Task: Analyze Japanese text for language learners. Output JSON ONLY.
 Target Language for All Meanings & Explanations: "${langGuide}" (${targetLang})
 
-STRICT OUTPUT RULES:
-1. Output MUST be valid JSON only. Do not wrap in markdown or add explanations.
-2. "rubySentences" MUST NOT be empty. Convert every Japanese sentence using <ruby>漢字<rt>かんじ</rt></ruby> tags.
-3. "wordList", "kanjiList", and "grammarList" MUST contain analyzed components.
-4. DO NOT output multilingual maps. Provide all "meaning" and "explanation" fields ONLY as a SINGLE STRING in ${langGuide}.
-5. "partOfSpeech" MUST be strictly one from: ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
+CRITICAL RULES:
+1. Response must be pure JSON with NO markdown formatting (no \`\`\`json).
+2. "rubySentences" MUST contain sentences with <ruby>漢字<rt>かんじ</rt></ruby> tags.
+3. Provide "meaning" and "explanation" strictly as a single string in ${langGuide}.
+4. "partOfSpeech" MUST be strictly one of: ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
 
-JSON Schema:
+JSON Structure:
 {
   "isJapanese": true,
-  "translatedText": "Full text translation in ${langGuide}",
+  "translatedText": "Full translation in ${langGuide}",
   "rubySentences": [
     "山中<ruby>市長<rt>しちょう</rt></ruby>は<ruby>記者会見<rt>きしゃかいけん</rt></ruby>で..."
   ],
@@ -146,7 +134,7 @@ JSON Schema:
       "word": "市長",
       "reading": "しちょう",
       "partOfSpeech": "noun",
-      "meaning": "Meaning string in ${langGuide}",
+      "meaning": "Meaning in ${langGuide}",
       "jlpt": "N3"
     }
   ],
@@ -154,13 +142,13 @@ JSON Schema:
     {
       "kanji": "市",
       "readings": "シ",
-      "meaning": "Meaning string in ${langGuide}"
+      "meaning": "Meaning in ${langGuide}"
     }
   ],
   "grammarList": [
     {
       "grammar": "〜において",
-      "explanation": "Explanation string in ${langGuide}"
+      "explanation": "Explanation in ${langGuide}"
     }
   ]
 }`
@@ -168,9 +156,9 @@ JSON Schema:
       },
       contents: [{ role: 'user', parts: parts }],
       generationConfig: {
-        responseMimeType: 'application/json', // 강제 JSON 규격 요구
+        responseMimeType: 'application/json',
         temperature: 0.1,
-        maxOutputTokens: 2000
+        maxOutputTokens: 3500 // 🌸 토큰 부족으로 인한 JSON 절단 방지
       }
     };
 
@@ -178,14 +166,21 @@ JSON Schema:
     const apiResult = await fetchGeminiDirect(apiKey, payload);
     const rawText = apiResult.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     
-    // 🌸 안전한 JSON 추출 (여기서 에러가 나지 않도록 try-catch 보강)
+    // 안전한 JSON 파싱
     const jsonString = extractCleanJson(rawText);
     let parsedData = {};
+    
     try {
       parsedData = JSON.parse(jsonString);
     } catch (parseError) {
-      console.error('[Gemini Final JSON Parse Failed]:', jsonString);
-      throw new Error("FAILED_TO_PARSE_CLEANED_JSON");
+      // 2차 파싱 방어 (따옴표나 개행 문제 보정)
+      try {
+        const sanitizedStr = jsonString.replace(/[\u0000-\u001F\u007F-\u009F]/g, " ");
+        parsedData = JSON.parse(sanitizedStr);
+      } catch (secondaryError) {
+        console.error('[Raw Gemini Response Parsing Error]:', rawText);
+        throw new Error("FAILED_TO_PARSE_CLEANED_JSON");
+      }
     }
 
     return new Response(JSON.stringify(parsedData), {
