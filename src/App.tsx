@@ -1933,7 +1933,7 @@ export default function App() {
                           onClick={() => toggleSpeech(quizState.quizCards[quizState.currentCardIndex].word)}
                           className={`text-sm p-1 rounded transition cursor-pointer ${
                             speakingText === quizState.quizCards[quizState.currentCardIndex].word
-                              ? 'bg-rose-600 text-white hover:bg-rose-700 border border-rose-700'
+                              ? 'bg-rose-600 text-white font-bold border border-rose-700'
                               : 'text-slate-400 hover:text-amber-600'
                           }`}
                         >
@@ -2050,7 +2050,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* 🌸 푸터 영역 (10% 확대 대상에서 제외하여 원래 고유 크기로 지정) 🌸 */}
+      {/* 🌸 푸터 영역 (25% 확대 대상에서 제외하여 원본 크기 유지) 🌸 */}
       <footer className="footer-area w-full py-6 flex flex-col items-center justify-center border-t border-slate-200 bg-white mt-12 space-y-2 px-4 text-center">
         <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs font-bold text-slate-600">
           <button onClick={() => openLegalDoc('terms')} className="hover:text-rose-600 hover:underline cursor-pointer">
@@ -2598,7 +2598,7 @@ export default function App() {
           text-rendering: optimizeLegibility;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
-          zoom: 1.1; /* 🌸 화면 전체 10% 확대 스케일 고정 */
+          zoom: 1.25; /* 🌸 화면 전체 25% 확대 스케일 적용 */
         }
 
         body {
@@ -2606,7 +2606,7 @@ export default function App() {
         }
 
         .footer-area {
-          zoom: 0.909; /* 🌸 푸터 영역만 원래 100% 원본 비율로 보정 */
+          zoom: 0.8; /* 🌸 푸터 영역만 원래 100% 원본 비율로 고정 (1/1.25 = 0.8) */
         }
 
         .app-logo-text, .app-logo-text * {
