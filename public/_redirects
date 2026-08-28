@@ -1,0 +1,8 @@
+# 1. .pages.dev 기본 주소 접속 시 커스텀 도메인(www.yomiyomi-jp.com)으로 301 리디렉션
+https://yomiyomi-jp.pages.dev/* https://www.yomiyomi-jp.com/:splat 301!
+
+# 2. apex 도메인 접속 시 www 주소로 정규화
+https://yomiyomi-jp.com/* https://www.yomiyomi-jp.com/:splat 301!
+
+# 3. SPA 라우팅 및 새로고침 시 404 방지
+/* /index.html 200
