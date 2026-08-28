@@ -22,7 +22,7 @@ async function fetchGeminiDirect(apiKey, payload) {
   throw new Error(`GEMINI_API_ERROR_${response.status}: ${resText}`);
 }
 
-// JSON 안심 파싱 유틸리티
+// 2,500자 입력 대응 강건한 JSON 추출 유틸리티
 function extractCleanJson(rawText) {
   if (!rawText || typeof rawText !== 'string') return '{}';
   
@@ -32,15 +32,7 @@ function extractCleanJson(rawText) {
   const lastBrace = cleaned.lastIndexOf('}');
   
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
-    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-  } else {
-    const firstBracket = cleaned.indexOf('[');
-    const lastBracket = cleaned.lastIndexOf(']');
-    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket >= firstBracket) {
-      cleaned = cleaned.substring(firstBracket, lastBracket + 1);
-    } else {
-      return '{}';
-    }
+    return cleaned.substring(firstBrace, lastBrace + 1);
   }
   
   return cleaned;
@@ -52,7 +44,7 @@ export async function onRequestPost(context) {
   // 1. Firebase API Key 환경변수 체크
   const firebaseApiKey = env.VITE_FIREBASE_API_KEY || env.FIREBASE_API_KEY;
   if (!firebaseApiKey) {
-    return new Response(JSON.stringify({ error: 'CONFIG_ERROR', message: 'VITE_FIREBASE_API_KEY 환경변수가 미설정되었습니다.' }), {
+    return new Response(JSON.stringify({ error: 'CONFIG_ERROR', message: 'VITE_FIREBASE_API_KEY 환경변수가 설정되지 않았습니다.' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -61,7 +53,7 @@ export async function onRequestPost(context) {
   // 2. Firebase 인증 토큰 헤더 검증
   const authHeader = request.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return new Response(JSON.stringify({ error: 'UNAUTHORIZED', message: 'Authorization 헤더가 없거나 유효하지 않습니다.' }), {
+    return new Response(JSON.stringify({ error: 'UNAUTHORIZED', message: '로그인이 필요합니다.' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -70,7 +62,6 @@ export async function onRequestPost(context) {
   const idToken = authHeader.split('Bearer ')[1];
   let uid = null;
 
-  // 3. Firebase ID 토큰 유효성 검사
   try {
     const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`, {
       method: 'POST',
@@ -80,10 +71,7 @@ export async function onRequestPost(context) {
 
     if (!verifyRes.ok) {
       const errResText = await verifyRes.text();
-      return new Response(JSON.stringify({ 
-        error: 'INVALID_TOKEN', 
-        message: `Firebase 인증 실패: ${errResText}` 
-      }), {
+      return new Response(JSON.stringify({ error: 'INVALID_TOKEN', message: `Firebase 인증 실패: ${errResText}` }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -110,7 +98,7 @@ export async function onRequestPost(context) {
     const MAX_INPUT_TEXT = 2500;
 
     if (text && text.length > MAX_INPUT_TEXT) {
-      return new Response(JSON.stringify({ error: 'TEXT_TOO_LONG', message: '텍스트 길이가 제한을 초과했습니다.' }), {
+      return new Response(JSON.stringify({ error: 'TEXT_TOO_LONG', message: '텍스트 길이가 제한(2,500자)을 초과했습니다.' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -118,7 +106,7 @@ export async function onRequestPost(context) {
 
     const apiKey = env.GEMINI_API_KEY || '';
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'CONFIG_ERROR', message: 'GEMINI_API_KEY 환경변수가 미설정되었습니다.' }), {
+      return new Response(JSON.stringify({ error: 'CONFIG_ERROR', message: 'GEMINI_API_KEY가 백엔드에 설정되지 않았습니다.' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -143,29 +131,30 @@ export async function onRequestPost(context) {
     const payload = {
       systemInstruction: {
         parts: [{
-          text: `Task: Analyze Japanese text for language learners. Output JSON ONLY.
+          text: `Task: Analyze Japanese text for language learners up to 2500 characters. Output JSON ONLY.
 Target Language for All Meanings & Explanations: "${langGuide}" (${targetLang})
 
 STRICT OUTPUT RULES:
-1. Output MUST be valid JSON only. Do not wrap in markdown or add explanations.
-2. "rubySentences" MUST NOT be empty. Convert every Japanese sentence using <ruby>漢字<rt>かんじ</rt></ruby> tags.
-3. "wordList", "kanjiList", and "grammarList" MUST contain analyzed components.
-4. DO NOT output multilingual maps. Provide all "meaning" and "explanation" fields ONLY as a SINGLE STRING in ${langGuide}.
-5. "partOfSpeech" MUST be strictly one from: ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
+1. Output MUST be valid JSON only without markdown formatting.
+2. "rubySentences": Split text into sentences and convert all Japanese kanji using <ruby>漢字<rt>かんじ</rt></ruby> tags.
+3. "wordList": Extract top key vocabulary (max 25 items to ensure fast response and avoid token overflow).
+4. "kanjiList": Extract unique key kanji (max 20 items).
+5. "grammarList": Extract key grammar structures (max 10 items).
+6. "partOfSpeech": MUST be strictly one from: ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
 
 JSON Schema:
 {
   "isJapanese": true,
   "translatedText": "Full text translation in ${langGuide}",
   "rubySentences": [
-    "山中<ruby>市長<rt>しちょう</rt></ruby>は<ruby>記者会見<rt>きしゃかいけん</rt></ruby>で..."
+    "山中<ruby>市長<rt>しちょう</rt></ruby>は..."
   ],
   "wordList": [
     {
       "word": "市長",
       "reading": "しちょう",
       "partOfSpeech": "noun",
-      "meaning": "Meaning string in ${langGuide}",
+      "meaning": "Meaning in ${langGuide}",
       "jlpt": "N3"
     }
   ],
@@ -173,13 +162,13 @@ JSON Schema:
     {
       "kanji": "市",
       "readings": "シ",
-      "meaning": "Meaning string in ${langGuide}"
+      "meaning": "Meaning in ${langGuide}"
     }
   ],
   "grammarList": [
     {
       "grammar": "〜において",
-      "explanation": "Explanation string in ${langGuide}"
+      "explanation": "Explanation in ${langGuide}"
     }
   ]
 }`
@@ -189,7 +178,7 @@ JSON Schema:
       generationConfig: {
         responseMimeType: 'application/json',
         temperature: 0.1,
-        maxOutputTokens: 2000
+        maxOutputTokens: 8192 // 🌸 2,500자 전체 분량용 토큰 최대 상한 적용
       }
     };
 
@@ -205,7 +194,7 @@ JSON Schema:
     } catch (parseError) {
       return new Response(JSON.stringify({ 
         error: 'PARSE_ERROR', 
-        message: `JSON 파싱 실패 원본: ${rawText.slice(0, 300)}` 
+        message: `JSON 파싱 실패: ${rawText.slice(0, 300)}` 
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -223,7 +212,6 @@ JSON Schema:
   } catch (err) {
     const errString = String(err?.message || err || '');
 
-    // 🌸 서버 에러 발생 시 브라우저 응답에 상세 원인 메시지 노출 🌸
     return new Response(JSON.stringify({ 
       error: 'SERVER_EXECUTION_ERROR', 
       message: `[Server Detail Error]: ${errString}` 
