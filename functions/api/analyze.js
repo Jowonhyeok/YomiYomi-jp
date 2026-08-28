@@ -1,30 +1,43 @@
-// 구글 Gemini REST API 다이렉트 호출 함수
-async function fetchGeminiDirect(apiKey, payload, retries = 1, delay = 1000) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
-  
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+// 구글 Gemini REST API 다이렉트 호출 함수 (503 대응 재시도 및 Fallback 적용)
+async function fetchGeminiDirect(apiKey, payload, retries = 3, initialDelay = 1000) {
+  // 메인 모델: gemini-3.5-flash-lite
+  // 대체(Fallback) 모델: gemini-3.1-flash-lite
+  const primaryModel = 'gemini-3.5-flash-lite';
+  const fallbackModel = 'gemini-3.1-flash-lite';
+  let delay = initialDelay;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      if ((response.status === 503 || errorText.includes("high demand")) && retries > 0) {
-        await new Promise(res => setTimeout(res, delay));
-        return fetchGeminiDirect(apiKey, payload, retries - 1, delay * 1.5);
+  for (let attempt = 0; attempt < retries; attempt++) {
+    // 마지막 시도 시 안정적인 fallback 모델(gemini-3.1-flash-lite)로 전환
+    const model = (attempt === retries - 1) ? fallbackModel : primaryModel;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        return await response.json();
       }
-      throw new Error(`GEMINI_API_ERROR_${response.status}: ${errorText}`);
-    }
 
-    return await response.json();
-  } catch (err) {
-    if (retries > 0 && String(err).includes("503")) {
-      await new Promise(res => setTimeout(res, delay));
-      return fetchGeminiDirect(apiKey, payload, retries - 1, delay * 1.5);
+      // 503 (Service Unavailable) 또는 429 (Rate Limit) 발생 시 대기 후 재시도
+      if (response.status === 503 || response.status === 429) {
+        console.warn(`[Gemini API Warning] Status ${response.status} (${model}). ${delay}ms 후 재시도... (${attempt + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2; // 지수 백오프 (1s -> 2s)
+        continue;
+      }
+
+      const errorText = await response.text();
+      throw new Error(`GEMINI_API_ERROR_${response.status}: ${errorText}`);
+
+    } catch (err) {
+      if (attempt === retries - 1) throw err;
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay *= 2;
     }
-    throw err;
   }
 }
 
@@ -121,9 +134,9 @@ export async function onRequestPost(context) {
       });
     }
 
-    // 🛡️ 2. 기기 핑거프린트(deviceId) 기준 검증 (deviceId가 유효한 문자열일 때만 실행)
+    // 🛡️ 2. 기기 핑거프린트 검증 (deviceId가 유효할 때만 안전하게 실행)
     let deviceUsageCount = 0;
-    const isValidDeviceId = deviceId && typeof deviceId === 'string' && deviceId.trim().length > 0;
+    const isValidDeviceId = typeof deviceId === 'string' && deviceId.trim().length > 0;
 
     if (isValidDeviceId && !isSubscribed) {
       try {
@@ -165,17 +178,10 @@ export async function onRequestPost(context) {
       parts.push({ text: `Input: "${text}"` });
     }
     
-    // 🛡️ 이미지 데이터 검증 보완
-    if (imageBase64 && imageBase64.mimeType && imageBase64.data) {
+    // 이미지 첨부 유무 검증
+    if (imageBase64 && typeof imageBase64 === 'object' && imageBase64.mimeType && imageBase64.data) {
       parts.push({ inlineData: { mimeType: imageBase64.mimeType, data: imageBase64.data } });
       parts.push({ text: "Instruction: OCR and analyze Japanese text in image." });
-    }
-
-    if (parts.length === 0) {
-      return new Response(JSON.stringify({ error: 'EMPTY_INPUT', message: '분석할 텍스트나 이미지가 없습니다.' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
     }
 
     const payload = {
@@ -198,6 +204,7 @@ Schema Rules:
       }
     };
 
+    // 재시도 및 Fallback 로직이 적용된 호출 실행
     const apiResult = await fetchGeminiDirect(apiKey, payload);
     const rawText = apiResult.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     
@@ -210,10 +217,9 @@ Schema Rules:
       throw new Error('FAILED_TO_PARSE_GEMINI_RESPONSE');
     }
 
-    // Firestore 비동기 처리 (유저 카운트 및 기기 카운트 동시 업데이트)
+    // 🌸 DB 카운트 증가 처리를 백그라운드로 처리 (응답 속도 향상)
     if (context.waitUntil) {
-      const updates = [
-        // 유저 일일 카운트 업데이트
+      const asyncTasks = [
         fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
           method: 'PATCH',
           headers: { 
@@ -230,7 +236,7 @@ Schema Rules:
       ];
 
       if (isValidDeviceId) {
-        updates.push(
+        asyncTasks.push(
           fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/devices/${deviceId}_${today}`, {
             method: 'PATCH',
             headers: { 
@@ -247,7 +253,7 @@ Schema Rules:
       }
 
       context.waitUntil(
-        Promise.all(updates).catch(err => console.error('Firestore Async Update Warning:', err))
+        Promise.all(asyncTasks).catch(err => console.error('Firestore Async Update Warning:', err))
       );
     }
 
@@ -266,7 +272,7 @@ Schema Rules:
     if (errString.includes("503") || errString.includes("Service Unavailable") || errString.includes("high demand")) {
       return new Response(JSON.stringify({ 
         error: 'SERVICE_UNAVAILABLE', 
-        message: '503 Service Unavailable: High demand on Google Gemini API.' 
+        message: '503 Service Unavailable: Google Gemini API에 일시적인 트래픽 폭증이 발생했습니다. 잠시 후 다시 시도해 주세요.' 
       }), {
         status: 503,
         headers: { 'Content-Type': 'application/json' }

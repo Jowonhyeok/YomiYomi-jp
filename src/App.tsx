@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef} from 'react';
 import { createPortal } from 'react-dom';
 import { 
   signInWithEmailAndPassword, 
@@ -70,12 +70,16 @@ const LANG_OPTIONS: { code: Lang; flagUrl: string; label: string }[] = [
   { code: 'ja', flagUrl: 'https://flagcdn.com/jp.svg', label: '日本語' },
 ];
 
-// 🌸 기기 고유 ID 가져오기 유틸 함수
+// 🌸 Fingerprint ID 메모리 캐싱 변수 (매 호출 시 브라우저 연산 병목 제거)
+let cachedDeviceId: string | null = null;
+
 async function getDeviceId(): Promise<string | null> {
+  if (cachedDeviceId) return cachedDeviceId;
   try {
     const fp = await FingerprintJS.load();
     const result = await fp.get();
-    return result.visitorId;
+    cachedDeviceId = result.visitorId;
+    return cachedDeviceId;
   } catch (e) {
     console.error('Failed to load fingerprint device ID:', e);
     return null;
@@ -98,6 +102,11 @@ export default function App() {
   const [hideWordMeanings, setHideWordMeanings] = useState(false);
   const [hideKanjiMeanings, setHideKanjiMeanings] = useState(false);
   const [hideGrammarMeanings, setHideGrammarMeanings] = useState(false);
+
+  // 🌸 앱 로드 시 미리 DeviceId를 비동기로 받아두어 캐싱 처리
+  useEffect(() => {
+    getDeviceId();
+  }, []);
 
   // 🌸 다국어 번역 함수
   const t = (key: string) => DICT[lang]?.[key] || DICT['en']?.[key] || DICT['ko']?.[key] || key;
@@ -393,7 +402,6 @@ export default function App() {
     }
   }, [decks, quizSelectedDeckIds, setQuizSelectedDeckIds]);
 
-  // 🌸 회원가입 / 로그인 제출 핸들러 (다국어 보완)
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authEmail.trim() || !authPassword.trim()) {
@@ -452,7 +460,6 @@ export default function App() {
     }
   };
 
-  // 🌸 구글 로그인 핸들러 (다국어 보완)
   const handleGoogleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
@@ -479,7 +486,6 @@ export default function App() {
     });
   };
 
-  // 🌸 계정 삭제 핸들러 (다국어 보완)
   const handleDeleteAccount = () => {
     showConfirm(t('deleteAccountConfirm'), async () => {
       if (!currentUser || !auth.currentUser) return;
@@ -521,7 +527,6 @@ export default function App() {
     });
   };
 
-  // 🌸 레몬스퀴지 결제 핸들러 (다국어 보완)
   const handleLemonSqueezyPayment = (planName: string, checkoutUrlRaw: string) => {
     if (!agreePayPolicy) {
       showAlert(t('agreePayPolicyRequired'));
@@ -572,6 +577,7 @@ export default function App() {
     }
   };
 
+  // 🌸 이미지 압축 캔버스 변환 성능 최적화
   const processImageFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
       showAlert(t('imageOnlyAlert'));
@@ -603,7 +609,7 @@ export default function App() {
           ctx.drawImage(img, 0, 0, width, height);
           
           const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-          const dataUrl = canvas.toDataURL(mimeType, 0.85);
+          const dataUrl = canvas.toDataURL(mimeType, 0.75); // Quality 0.75로 전송 크기 감소
           const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
 
           setSelectedImage({
@@ -639,7 +645,6 @@ export default function App() {
     }
   };
 
-  // 🌸 음성 TTS 핸들러 (다국어 보완)
   const toggleSpeech = (text: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       showAlert(t('ttsNotSupported'));
@@ -665,7 +670,7 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // 🌸 분석 실행 핸들러 (모든 에러 알림 다국어 보완)
+  // 🌸 분석 실행 핸들러 (지연 원인 즉시 제거 및 최적화)
   const handleAnalyze = async () => {
     if (!currentUser) {
       showAlert(t('loginGateMsg'));
@@ -684,7 +689,8 @@ export default function App() {
     try {
       const imagePayload = selectedImage ? { mimeType: selectedImage.mimeType, data: selectedImage.data } : undefined;
       
-      const deviceId = await getDeviceId();
+      // 캐싱된 Device ID 빠르게 동기 취득
+      const deviceId = cachedDeviceId || await getDeviceId();
 
       const result = await analyzeJapanese(inputText, lang, imagePayload, deviceId);
       setAnalysisResult(result);
@@ -717,9 +723,10 @@ export default function App() {
       }
     } finally {
       setIsAnalyzing(false);
+      // 쿨다운 시간을 1초로 단축하여 빠른 재시도 보장
       setTimeout(() => {
         setIsCoolingDown(false);
-      }, 3000);
+      }, 1000);
     }
   };
 
