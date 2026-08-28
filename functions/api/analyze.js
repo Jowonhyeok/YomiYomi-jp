@@ -1,14 +1,28 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-// 구글 API 호출 실패 시 백엔드 내부 자동 재시도 함수
-async function generateWithRetry(model, contents, retries = 2, delay = 1000) {
+// SDK 없이 구글 Gemini REST API를 직접 타격하는 재시도 함수
+async function fetchGeminiDirect(apiKey, payload, retries = 2, delay = 800) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
+  
   try {
-    return await model.generateContent({ contents });
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      if ((response.status === 503 || errorText.includes("high demand")) && retries > 0) {
+        await new Promise(res => setTimeout(res, delay));
+        return fetchGeminiDirect(apiKey, payload, retries - 1, delay * 1.5);
+      }
+      throw new Error(`GEMINI_API_ERROR_${response.status}: ${errorText}`);
+    }
+
+    return await response.json();
   } catch (err) {
-    const errStr = String(err?.message || err || '');
-    if ((errStr.includes("503") || errStr.includes("Service Unavailable") || errStr.includes("high demand")) && retries > 0) {
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return generateWithRetry(model, contents, retries - 1, delay * 1.5);
+    if (retries > 0 && String(err).includes("503")) {
+      await new Promise(res => setTimeout(res, delay));
+      return fetchGeminiDirect(apiKey, payload, retries - 1, delay * 1.5);
     }
     throw err;
   }
@@ -109,33 +123,21 @@ export async function onRequestPost(context) {
     const apiKey = env.GEMINI_API_KEY || '';
     if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash-lite',
-      generationConfig: { 
-        responseMimeType: 'application/json',
-        temperature: 0.1,
-        maxOutputTokens: 2500
-      }
-    });
-
     let langGuide = "English";
     if (targetLang === "zh-CN") langGuide = "Simplified Chinese";
     else if (targetLang === "zh-TW") langGuide = "Traditional Chinese";
     else if (targetLang === "ko") langGuide = "Korean";
     else if (targetLang === "ja") langGuide = "Japanese";
 
-    // 🌸 영문 가중 최적화 프롬프트 (Ultra-lightweight)
     let promptText = `Task: Analyze Japanese input for learners. Output JSON ONLY.
 Target Language: "${targetLang}" (${langGuide})
 
-Schema Rules:
-- "translatedText": Full text translation in target language (string).
-- "partOfSpeech": Standard code strictly from ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
-- "meaning" & "explanation": Multilingual map with keys ["ko","en","zh-CN","zh-TW","ja"].
+Rules:
+- "translatedText": Full translation string.
+- "partOfSpeech": Exactly one from ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
+- "meaning" & "explanation": Multi-lang map with keys ["ko","en","zh-CN","zh-TW","ja"].
 
-JSON Output Format:
+JSON Format:
 {
   "isJapanese": true,
   "translatedText": "string",
@@ -155,24 +157,37 @@ JSON Output Format:
       parts.push({ inlineData: { mimeType: imageBase64.mimeType, data: imageBase64.data } });
     }
 
-    const result = await generateWithRetry(model, [{ role: 'user', parts: parts }]);
-    let rawText = result.response.text() || '{}';
-    let cleanedJsonText = rawText.split('```json').join('').split('```').join('').trim();
+    // Direct REST API 호출 페이로드
+    const payload = {
+      contents: [{ role: 'user', parts: parts }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        temperature: 0.1,
+        maxOutputTokens: 2048
+      }
+    };
+
+    const apiResult = await fetchGeminiDirect(apiKey, payload);
+    const rawText = apiResult.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const cleanedJsonText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
     const parsedData = JSON.parse(cleanedJsonText);
 
-    await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
-      method: 'PATCH',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${idToken}` 
-      },
-      body: JSON.stringify({
-        fields: {
-          dailyAnalyzeCount: { integerValue: String(dailyCount + 1) },
-          lastAnalyzeDate: { stringValue: today }
-        }
-      })
-    });
+    // Firestore 업데이트 비동기(Non-blocking) 처리
+    context.waitUntil(
+      fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}` 
+        },
+        body: JSON.stringify({
+          fields: {
+            dailyAnalyzeCount: { integerValue: String(dailyCount + 1) },
+            lastAnalyzeDate: { stringValue: today }
+          }
+        })
+      }).catch(err => console.error('Firestore Update Warning:', err))
+    );
 
     return new Response(JSON.stringify(parsedData), {
       status: 200,
@@ -186,11 +201,7 @@ JSON Output Format:
     const errString = String(err?.message || err || '');
     console.error('[Analyze Error Detail]:', errString);
 
-    if (
-      errString.includes("503") || 
-      errString.includes("Service Unavailable") || 
-      errString.includes("high demand")
-    ) {
+    if (errString.includes("503") || errString.includes("Service Unavailable") || errString.includes("high demand")) {
       return new Response(JSON.stringify({ 
         error: 'SERVICE_UNAVAILABLE', 
         message: '503 Service Unavailable: High demand on Google Gemini API.' 
