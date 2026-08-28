@@ -471,7 +471,7 @@ export default function App() {
         await signOut(auth);
       } catch (e) {
         console.error("SignOut error:", e);
-      } flexily {
+      } finally {
         setCurrentUser(null);
         setDecks([DEFAULT_DECK_DATA]);
         setIsSettingsModalOpen(false);
@@ -2597,12 +2597,10 @@ export default function App() {
           text-rendering: optimizeLegibility;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
-          font-size: 16.5px !important;
         }
 
         body {
-          line-height: 1.75 !important;
-          letter-spacing: 0.015em !important;
+          line-height: 1.6;
         }
 
         .app-logo-text, .app-logo-text * {
