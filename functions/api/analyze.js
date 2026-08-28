@@ -1,16 +1,11 @@
-// 구글 Gemini REST API 다이렉트 호출 함수 (503 대응 재시도 및 Fallback 적용)
+// 구글 Gemini REST API 다이렉트 호출 함수 (gemini-3.5-flash-lite 고정)
 async function fetchGeminiDirect(apiKey, payload, retries = 3, initialDelay = 1000) {
-  // 메인 모델: gemini-3.5-flash-lite
-  // 대체(Fallback) 모델: gemini-3.1-flash-lite
-  const primaryModel = 'gemini-3.5-flash-lite';
-  const fallbackModel = 'gemini-3.1-flash-lite';
+  // 사용 중이신 gemini-3.5-flash-lite 고정
+  const targetModel = 'gemini-3.5-flash-lite';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
   let delay = initialDelay;
 
   for (let attempt = 0; attempt < retries; attempt++) {
-    // 마지막 시도 시 안정적인 fallback 모델(gemini-3.1-flash-lite)로 전환
-    const model = (attempt === retries - 1) ? fallbackModel : primaryModel;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -18,20 +13,25 @@ async function fetchGeminiDirect(apiKey, payload, retries = 3, initialDelay = 10
         body: JSON.stringify(payload)
       });
 
+      const resText = await response.text();
+
       if (response.ok) {
-        return await response.json();
+        try {
+          return JSON.parse(resText);
+        } catch (e) {
+          throw new Error(`API_RESPONSE_NOT_JSON: ${resText}`);
+        }
       }
 
-      // 503 (Service Unavailable) 또는 429 (Rate Limit) 발생 시 대기 후 재시도
+      // 503 (Service Unavailable) 또는 429 (Rate Limit) 시 자동 대기 후 재시도
       if (response.status === 503 || response.status === 429) {
-        console.warn(`[Gemini API Warning] Status ${response.status} (${model}). ${delay}ms 후 재시도... (${attempt + 1}/${retries})`);
+        console.warn(`[Gemini API Warning] Status ${response.status}. ${delay}ms 후 재시도... (${attempt + 1}/${retries})`);
         await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2; // 지수 백오프 (1s -> 2s)
+        delay *= 2;
         continue;
       }
 
-      const errorText = await response.text();
-      throw new Error(`GEMINI_API_ERROR_${response.status}: ${errorText}`);
+      throw new Error(`GEMINI_API_ERROR_${response.status}: ${resText}`);
 
     } catch (err) {
       if (attempt === retries - 1) throw err;
@@ -134,7 +134,7 @@ export async function onRequestPost(context) {
       });
     }
 
-    // 🛡️ 2. 기기 핑거프린트 검증 (deviceId가 유효할 때만 안전하게 실행)
+    // 🛡️ 2. 기기 핑거프린트 검증
     let deviceUsageCount = 0;
     const isValidDeviceId = typeof deviceId === 'string' && deviceId.trim().length > 0;
 
@@ -178,7 +178,6 @@ export async function onRequestPost(context) {
       parts.push({ text: `Input: "${text}"` });
     }
     
-    // 이미지 첨부 유무 검증
     if (imageBase64 && typeof imageBase64 === 'object' && imageBase64.mimeType && imageBase64.data) {
       parts.push({ inlineData: { mimeType: imageBase64.mimeType, data: imageBase64.data } });
       parts.push({ text: "Instruction: OCR and analyze Japanese text in image." });
@@ -204,20 +203,26 @@ Schema Rules:
       }
     };
 
-    // 재시도 및 Fallback 로직이 적용된 호출 실행
     const apiResult = await fetchGeminiDirect(apiKey, payload);
     const rawText = apiResult.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     
     let parsedData = {};
     try {
-      const cleanedJsonText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+      // JSON 파싱 안전성 강화: 첫번째 '{' 와 마지막 '}' 사이의 텍스트만 슬라이싱
+      let cleanedJsonText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const firstBrace = cleanedJsonText.indexOf('{');
+      const lastBrace = cleanedJsonText.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        cleanedJsonText = cleanedJsonText.substring(firstBrace, lastBrace + 1);
+      }
+
       parsedData = JSON.parse(cleanedJsonText);
     } catch (pErr) {
-      console.error('JSON Parse Error Raw Content:', rawText);
-      throw new Error('FAILED_TO_PARSE_GEMINI_RESPONSE');
+      console.error('[Gemini Raw Content Parse Failed]:', rawText);
+      throw new Error(`FAILED_TO_PARSE_GEMINI_RESPONSE: ${rawText.slice(0, 100)}`);
     }
 
-    // 🌸 DB 카운트 증가 처리를 백그라운드로 처리 (응답 속도 향상)
+    // 🌸 DB 카운트 증가 처리 (비동기)
     if (context.waitUntil) {
       const asyncTasks = [
         fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
