@@ -479,7 +479,6 @@ export default function App() {
     });
   };
 
-  // 🌸 계정 탈퇴 시 Firestore users 문서까지 자동 일괄 삭제
   const handleDeleteAccount = () => {
     showConfirm(t('deleteAccountConfirm'), async () => {
       if (!currentUser || !auth.currentUser) return;
@@ -488,7 +487,6 @@ export default function App() {
       const firebaseUser = auth.currentUser;
 
       try {
-        // 1. Firestore Database 내 'users' 컬렉션 문서 자동 삭제
         if (db && db.app) {
           try {
             const userDocRef = doc(db, 'users', userUid);
@@ -498,10 +496,8 @@ export default function App() {
           }
         }
 
-        // 2. Firebase Authentication 계정 삭제
         await deleteUser(firebaseUser);
 
-        // 3. 로컬 상태 초기화
         setCurrentUser(null);
         setIsSettingsModalOpen(false);
         setDecks([DEFAULT_DECK_DATA]);
@@ -524,7 +520,6 @@ export default function App() {
     });
   };
 
-  // 🌸 레몬스퀴지 결제 호출 함수
   const handleLemonSqueezyPayment = (planName: string, checkoutUrlRaw: string) => {
     if (!agreePayPolicy) {
       showAlert(lang === 'ko' ? "결제 약관 및 이용 정책에 동의해 주세요." : "Please agree to the payment policy terms.");
@@ -690,19 +685,29 @@ export default function App() {
       recordFeatureUsage();
 
     } catch (error: any) {
-      if (error.message === "DAILY_LIMIT_EXCEEDED") {
+      const errMessage = String(error?.message || error || '');
+
+      // 🌸 구글 AI 과부하 에러(503 Service Unavailable / High Demand) 핸들링
+      if (
+        errMessage.includes("503") || 
+        errMessage.includes("Service Unavailable") || 
+        errMessage.includes("high demand") ||
+        errMessage.includes("experiencing high demand")
+      ) {
+        setErrorMessage(t('googleServiceUnavailable'));
+      } else if (errMessage === "DAILY_LIMIT_EXCEEDED") {
         showAlert(t('dailyLimitReached'));
         setIsPricingModalOpen(true);
-      } else if (error.message === "FUP_LIMIT_EXCEEDED") {
+      } else if (errMessage === "FUP_LIMIT_EXCEEDED") {
         setErrorMessage("⚠️ " + (lang === 'ko' ? "일일 최대 분석 제공량을 초과했습니다. 내일 다시 이용해 주세요." : "Daily usage limit exceeded. Please try again tomorrow."));
-      } else if (error.message === "RATE_LIMIT_EXCEEDED") {
+      } else if (errMessage === "RATE_LIMIT_EXCEEDED") {
         setErrorMessage("⚠️ Too many requests. Please wait a moment.");
-      } else if (error.message === "JAPANESE_ONLY") {
+      } else if (errMessage === "JAPANESE_ONLY") {
         setErrorMessage("⚠️ Only Japanese sentences or images with Japanese text can be analyzed.");
-      } else if (error.message === "UNAUTHORIZED") {
+      } else if (errMessage === "UNAUTHORIZED") {
         setErrorMessage("⚠️ Session expired. Please log in again.");
       } else {
-        setErrorMessage(`⚠️ ${error.message || 'An error occurred during analysis.'}`);
+        setErrorMessage(`⚠️ ${errMessage || 'An error occurred during analysis.'}`);
       }
     } finally {
       setIsAnalyzing(false);
@@ -2643,7 +2648,7 @@ export default function App() {
           text-rendering: optimizeLegibility;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
-          zoom: 1.25; /* 🌸 화면 전체 25% 확대 스케일 고정 */
+          zoom: 1.25;
         }
 
         body {
@@ -2651,7 +2656,7 @@ export default function App() {
         }
 
         .footer-area {
-          zoom: 0.8; /* 🌸 푸터 영역만 원본 비율 고정 (1 / 1.25 = 0.8) */
+          zoom: 0.8;
         }
 
         .app-logo-text, .app-logo-text * {

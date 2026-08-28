@@ -53,7 +53,7 @@ export function getLocalizedPOS(pos: string, lang: Lang): string {
     suffix: { ko: '접미사', en: 'Suffix', 'zh-CN': '后缀', 'zh-TW': '後綴', ja: '接尾辞' },
     kanji: { ko: '한자', en: 'Kanji', 'zh-CN': '汉字', 'zh-TW': '漢字', ja: '漢字' },
     grammar: { ko: '문법', en: 'Grammar', 'zh-CN': '语法', 'zh-TW': '文法', ja: '文法' },
-    other: { ko: '기타', en: 'Other', 'zh-CN': '其他', 'zh-TW': '其他', ja: 'その他' }
+    other: { ko: '기타', en: 'Other', 'zh-CN': 'Other', 'zh-TW': '其他', ja: 'その他' }
   };
 
   // 키워드 기반 스마트 카테고리 감지 (AI가 한글/중국어/영어 혼용 텍스트를 내놓아도 방어)
@@ -213,6 +213,12 @@ export async function analyzeJapanese(text: string, targetLang: Lang, imageBase6
       throw new Error(errData.message || "RATE_LIMIT_EXCEEDED");
     }
     if (response.status === 401) throw new Error("UNAUTHORIZED");
+    
+    // 🌸 구글 API 503 과부하 또는 HTTP 503 반환 시 에러 키워드 포함 전달
+    if (response.status === 503) {
+      throw new Error(errData.message || "503 Service Unavailable");
+    }
+
     throw new Error(errData.message || `API_HTTP_ERROR_${response.status}`);
   }
 

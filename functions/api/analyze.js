@@ -96,9 +96,17 @@ export async function onRequestPost(context) {
     if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
 
     const genAI = new GoogleGenerativeAI(apiKey);
+    
+    // 🌸 gemini-3.5-flash-lite 모델 유지 + thinkingBudget: 0 설정으로 2분 딜레이 해결
     const model = genAI.getGenerativeModel({
       model: 'gemini-3.5-flash-lite',
-      generationConfig: { responseMimeType: 'application/json' }
+      generationConfig: { 
+        responseMimeType: 'application/json',
+        temperature: 0.2,
+        thinkingConfig: {
+          thinkingBudget: 0
+        }
+      }
     });
 
     let langGuide = "English";
@@ -158,8 +166,25 @@ export async function onRequestPost(context) {
     });
 
   } catch (err) {
-    console.error('[Analyze Error Detail]:', err.message || err);
-    return new Response(JSON.stringify({ error: 'INTERNAL_SERVER_ERROR', message: err.message || '서버 오류가 발생했습니다.' }), {
+    const errString = String(err?.message || err || '');
+    console.error('[Analyze Error Detail]:', errString);
+
+    // 🌸 구글 API 503 과부하 (high demand/Service Unavailable) 발생 시 503 HTTP 응답 생성
+    if (
+      errString.includes("503") || 
+      errString.includes("Service Unavailable") || 
+      errString.includes("high demand")
+    ) {
+      return new Response(JSON.stringify({ 
+        error: 'SERVICE_UNAVAILABLE', 
+        message: '503 Service Unavailable: High demand on Google Gemini API.' 
+      }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    return new Response(JSON.stringify({ error: 'INTERNAL_SERVER_ERROR', message: errString || '서버 오류가 발생했습니다.' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
