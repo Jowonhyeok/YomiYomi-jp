@@ -1,6 +1,5 @@
 // Google Gemini REST API 호출 함수
 async function fetchGeminiDirect(apiKey, payload) {
-  // 🌸 Gemini 3.5 Flash-Lite 정식 모델 ID 적용
   const targetModel = 'gemini-3.5-flash-lite';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
 
@@ -20,15 +19,17 @@ async function fetchGeminiDirect(apiKey, payload) {
     }
   }
 
-  // Google API 통신 에러 발생 시 500 내뱉지 않도록 에러 포맷팅
   throw new Error(`GEMINI_API_ERROR_${response.status}: ${resText}`);
 }
 
-// AI 응답 텍스트에서 마크다운 제거 후 순수 JSON 추출
+// AI 응답 텍스트에서 마크다운 및 불필요 문구 제거 후 순수 JSON 추출
 function extractCleanJson(rawText) {
   if (!rawText || typeof rawText !== 'string') return '{}';
   
-  let cleaned = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+  let cleaned = rawText
+    .replace(/```json/gi, '')
+    .replace(/```/g, '')
+    .trim();
   
   const firstBrace = cleaned.indexOf('{');
   const lastBrace = cleaned.lastIndexOf('}');

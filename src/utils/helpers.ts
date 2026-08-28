@@ -39,7 +39,8 @@ export async function analyzeJapanese(
     resData = JSON.parse(resText);
   } catch (e) {
     console.error("Non-JSON Response Received:", resText);
-    throw new Error(`SERVER_ERROR_${response.status}: 서버 응답 형식이 올바르지 않습니다.`);
+    // 🌸 App.tsx에서 catch하여 사전 문구를 출력할 수 있도록 PARSE_ERROR 키 던짐
+    throw new Error("PARSE_ERROR");
   }
 
   if (!response.ok || resData.error) {
