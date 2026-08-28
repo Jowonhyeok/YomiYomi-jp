@@ -160,7 +160,14 @@ export default function App() {
                     })
                   });
 
-                  const verifyData = await verifyRes.json();
+                  // 레몬스퀴지 파싱 방어 로직 적용
+                  let verifyData: any = {};
+                  try {
+                    verifyData = await verifyRes.json();
+                  } catch (e) {
+                    console.error('Verify endpoint returned non-JSON:', e);
+                  }
+
                   if (verifyRes.ok && verifyData.success) {
                     setCurrentUser((prev) => prev ? {
                       ...prev,
@@ -683,6 +690,7 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   };
 
+  // 🌸 예외 처리 및 방어 로직이 강화된 분석 함수
   const handleAnalyze = async () => {
     if (!currentUser) {
       showAlert(t('loginGateMsg'));
@@ -703,8 +711,13 @@ export default function App() {
       const deviceId = cachedDeviceId || await getDeviceId();
 
       const result = await analyzeJapanese(inputText, lang, imagePayload, deviceId);
-      setAnalysisResult(result);
       
+      // AI 응답 결과 구조 방어 검증
+      if (!result || typeof result !== 'object') {
+        throw new Error('INVALID_RESPONSE_FORMAT');
+      }
+
+      setAnalysisResult(result);
       recordFeatureUsage();
 
     } catch (error: any) {
@@ -728,6 +741,8 @@ export default function App() {
         setErrorMessage(t('japaneseOnlyAlert'));
       } else if (errMessage === "UNAUTHORIZED") {
         setErrorMessage(t('sessionExpiredAlert'));
+      } else if (errMessage === "PARSE_ERROR" || errMessage.includes("JSON")) {
+        setErrorMessage(t('parseErrorAlert') || '분석 결과를 받아오지 못했습니다. 잠시 후 다시 시도해주세요.');
       } else {
         setErrorMessage(`⚠️ ${errMessage}`);
       }
