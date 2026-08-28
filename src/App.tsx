@@ -479,6 +479,7 @@ export default function App() {
     });
   };
 
+  // 🌸 계정 탈퇴 시 Firestore users 문서까지 자동 일괄 삭제
   const handleDeleteAccount = () => {
     showConfirm(t('deleteAccountConfirm'), async () => {
       if (!currentUser || !auth.currentUser) return;
@@ -487,21 +488,25 @@ export default function App() {
       const firebaseUser = auth.currentUser;
 
       try {
+        // 1. Firestore Database 내 'users' 컬렉션 문서 자동 삭제
         if (db && db.app) {
           try {
             const userDocRef = doc(db, 'users', userUid);
             await deleteDoc(userDocRef);
           } catch (dbErr) {
-            console.warn("Firestore delete non-critical error:", dbErr);
+            console.warn("Firestore user document delete error:", dbErr);
           }
         }
 
+        // 2. Firebase Authentication 계정 삭제
         await deleteUser(firebaseUser);
 
+        // 3. 로컬 상태 초기화
         setCurrentUser(null);
         setIsSettingsModalOpen(false);
         setDecks([DEFAULT_DECK_DATA]);
         localStorage.removeItem('koto_decks');
+        
         showAlert(t('deleteAccountSuccess'));
 
       } catch (err: any) {
@@ -519,7 +524,7 @@ export default function App() {
     });
   };
 
-  // 🌸 레몬스퀴지 결제 호출 함수 (예외 차단 및 하드코딩 Fallback 탑재)
+  // 🌸 레몬스퀴지 결제 호출 함수
   const handleLemonSqueezyPayment = (planName: string, checkoutUrlRaw: string) => {
     if (!agreePayPolicy) {
       showAlert(lang === 'ko' ? "결제 약관 및 이용 정책에 동의해 주세요." : "Please agree to the payment policy terms.");
