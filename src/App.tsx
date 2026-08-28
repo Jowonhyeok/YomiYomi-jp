@@ -128,6 +128,7 @@ export default function App() {
     }
   }, [setLang]);
 
+  // 🌸 레몬스퀴지 결제 성공 시 즉시 세션 및 파이어베이스 세션 강제 갱신
   useEffect(() => {
     if (typeof window !== 'undefined') {
       if (window.createLemonSqueezy) {
@@ -143,7 +144,7 @@ export default function App() {
 
               if (auth.currentUser) {
                 try {
-                  const idToken = await auth.currentUser.getIdToken();
+                  const idToken = await auth.currentUser.getIdToken(true); // 강제 토큰 갱신
                   const verifyRes = await fetch('/api/payments/verify', {
                     method: 'POST',
                     headers: {
@@ -169,7 +170,12 @@ export default function App() {
                     setSelectedPlanForPay(null);
                     setAgreePayPolicy(false);
                     sessionStorage.removeItem('pendingPlanName');
+                    
+                    // 결제 성공 시 페이지 정보를 산뜻하게 원복 및 즉시 새로고침
                     showAlert(`🎉 ${planName} ${t('paymentSuccessAlert')}`);
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 1500);
                   } else {
                     showAlert(`${t('paymentApprovalError')}${verifyData?.message || 'Error'}`);
                   }
@@ -182,7 +188,7 @@ export default function App() {
         });
       }
     }
-  }, [setCurrentUser, setIsPricingModalOpen, setSelectedPlanForPay, showAlert, lang]);
+  }, [setCurrentUser, setIsPricingModalOpen, setSelectedPlanForPay, showAlert, lang, t]);
 
   const [inputText, setInputText] = useState('');
   const [selectedImage, setSelectedImage] = useState<{ file: File; preview: string; mimeType: string; data: string } | null>(null);
@@ -469,6 +475,7 @@ export default function App() {
     }
   };
 
+  // 🌸 로그아웃 시 홈페이지 새로고침(reload) 적용
   const handleLogout = () => {
     showConfirm(t('logoutConfirm'), async () => {
       try {
@@ -479,6 +486,10 @@ export default function App() {
         setCurrentUser(null);
         setDecks([DEFAULT_DECK_DATA]);
         setIsSettingsModalOpen(false);
+        // 로그아웃 후 깔끔한 세션 청소를 위해 새로고침 수행
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
       }
     });
   };
@@ -508,6 +519,10 @@ export default function App() {
         localStorage.removeItem('koto_decks');
         
         showAlert(t('deleteAccountSuccess'));
+        
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
 
       } catch (err: any) {
         console.error("Delete Account Error:", err);
@@ -722,7 +737,6 @@ export default function App() {
     }
   };
 
-  // 🌸 단어 추가 핸들러 (단일 문자열 처리)
   const handleAddCardToDeck = (word: WordInfo) => {
     if (!word) return;
 
@@ -734,7 +748,7 @@ export default function App() {
       word: String(word.word || '').trim(),
       reading: String(word.reading || '').trim(),
       partOfSpeech: String(word.partOfSpeech || '단어').trim(),
-      meaning: getLocalizedText(word.meaning, lang), // 문자열 안전 추출
+      meaning: getLocalizedText(word.meaning, lang),
       jlpt: String(word.jlpt || '').trim()
     };
 
@@ -760,7 +774,6 @@ export default function App() {
     }
   };
 
-  // 🌸 한자 추가 핸들러 (단일 문자열 처리)
   const handleAddKanjiToDeck = (k: KanjiInfo) => {
     handleAddCardToDeck({
       word: k.kanji,
@@ -771,7 +784,6 @@ export default function App() {
     });
   };
 
-  // 🌸 문법 추가 핸들러 (단일 문자열 처리)
   const handleAddGrammarToDeck = (g: GrammarInfo) => {
     handleAddCardToDeck({
       word: g.grammar,
@@ -972,7 +984,6 @@ export default function App() {
     setupQuizQuestion(shuffledCards, 0, 0);
   };
 
-  // 🌸 퀴즈 문제 세팅 (문자열 방어 로직 반영)
   const setupQuizQuestion = (cards: WordInfo[], index: number, score: number) => {
     const currentCard = cards[index];
     const currentCardMeaning = getLocalizedText(currentCard.meaning, lang);
@@ -1020,7 +1031,6 @@ export default function App() {
 
   const currentActiveDeck = decks.find(d => String(d.id) === String(selectedDeckId)) || decks[0] || DEFAULT_DECK_DATA;
 
-  // 🌸 검색 필터링 방어 로직 반영
   const filteredCards = (currentActiveDeck.cards || []).filter(c => 
     (c.word || '').toLowerCase().includes(searchKeyword.toLowerCase()) ||
     (c.reading || '').toLowerCase().includes(searchKeyword.toLowerCase()) ||
