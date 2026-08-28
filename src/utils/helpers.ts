@@ -39,8 +39,7 @@ export async function analyzeJapanese(
     resData = JSON.parse(resText);
   } catch (e) {
     console.error("Non-JSON Response Received:", resText);
-    // 🌸 App.tsx에서 catch하여 사전 문구를 출력할 수 있도록 PARSE_ERROR 키 던짐
-    throw new Error("PARSE_ERROR");
+    throw new Error(`SERVER_RESPONSE_ERROR (${response.status}): ${resText.slice(0, 100)}`);
   }
 
   if (!response.ok || resData.error) {

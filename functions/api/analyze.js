@@ -15,27 +15,29 @@ async function fetchGeminiDirect(apiKey, payload) {
     try {
       return JSON.parse(resText);
     } catch (e) {
-      throw new Error(`API_RESPONSE_NOT_JSON: ${resText.slice(0, 100)}`);
+      throw new Error(`GEMINI_RESPONSE_PARSE_FAILED: ${resText.slice(0, 100)}`);
     }
   }
 
   throw new Error(`GEMINI_API_ERROR_${response.status}: ${resText}`);
 }
 
-// AI 응답 텍스트에서 마크다운 및 불필요 문구 제거 후 순수 JSON 추출
+// AI 응답 텍스트 정제 및 손상된 JSON 자동 복구 함수
 function extractCleanJson(rawText) {
   if (!rawText || typeof rawText !== 'string') return '{}';
   
-  let cleaned = rawText
-    .replace(/```json/gi, '')
-    .replace(/```/g, '')
-    .trim();
+  let cleaned = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
   
   const firstBrace = cleaned.indexOf('{');
-  const lastBrace = cleaned.lastIndexOf('}');
+  let lastBrace = cleaned.lastIndexOf('}');
   
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
-    return cleaned.substring(firstBrace, lastBrace + 1);
+  if (firstBrace !== -1) {
+    if (lastBrace === -1 || lastBrace < firstBrace) {
+      // 토큰 잘림으로 '}'가 없는 경우 자동 닫기 처리
+      cleaned = cleaned.substring(firstBrace) + '}';
+    } else {
+      cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+    }
   }
   
   return cleaned;
@@ -47,7 +49,7 @@ export async function onRequestPost(context) {
   const firebaseApiKey = env.VITE_FIREBASE_API_KEY || env.FIREBASE_API_KEY;
   const apiKey = env.GEMINI_API_KEY || '';
 
-  // 1. Auth 토큰 검증
+  // 1. Authorization 헤더 검증
   const authHeader = request.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'UNAUTHORIZED', message: '로그인이 필요합니다.' }), {
@@ -58,6 +60,7 @@ export async function onRequestPost(context) {
 
   const idToken = authHeader.split('Bearer ')[1];
 
+  // 2. Firebase ID Token 검증
   try {
     const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`, {
       method: 'POST',
@@ -78,7 +81,7 @@ export async function onRequestPost(context) {
     });
   }
 
-  // 2. 본문 분석 실행
+  // 3. AI 본문 분석 실행
   try {
     const body = await request.json().catch(() => ({}));
     const { text = '', targetLang = 'en', imageBase64 = null } = body;
@@ -102,12 +105,12 @@ export async function onRequestPost(context) {
     const payload = {
       systemInstruction: {
         parts: [{
-          text: `Task: Analyze Japanese text for learners. FAST RESPONSE REQUIRED. Output JSON ONLY.
+          text: `Task: Analyze Japanese text for learners. Output JSON ONLY.
 Target Language for ALL Meanings & Explanations: "${langGuide}" (${targetLang})
 
 STRICT OUTPUT RULES:
-1. Output MUST be valid JSON only without markdown formatting.
-2. "meaning" and "explanation" MUST BE A SINGLE STRING in "${langGuide}" ONLY.
+1. Output MUST be valid JSON only without markdown.
+2. "meaning" and "explanation" MUST BE A SINGLE STRING in "${langGuide}".
 3. "rubySentences": Convert Japanese kanji using <ruby>漢字<rt>かんじ</rt></ruby> tags.
 4. "wordList": Extract MAX 10 key words.
 5. "kanjiList": Extract MAX 8 key kanji.
@@ -128,7 +131,7 @@ JSON Schema:
       generationConfig: {
         responseMimeType: 'application/json',
         temperature: 0.1,
-        maxOutputTokens: 2048
+        maxOutputTokens: 8192
       }
     };
 
@@ -141,7 +144,7 @@ JSON Schema:
     try {
       parsedData = JSON.parse(jsonString);
     } catch (e) {
-      return new Response(JSON.stringify({ error: 'PARSE_ERROR', message: 'AI 응답 결과 JSON 파싱에 실패했습니다.', rawText }), {
+      return new Response(JSON.stringify({ error: 'PARSE_ERROR', message: 'AI 분석 응답의 형식이 올바르지 않습니다.', rawText }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });

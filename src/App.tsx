@@ -39,7 +39,6 @@ import { useUserStore } from './store/useUserStore';
 import { useDeckStore } from './store/useDeckStore';
 import { useUIStore } from './store/useUIStore';
 
-// 🌸 입력 글자 수 최대 한도 1,500자로 고정
 const MAX_TEXT_LENGTH = 1500;
 
 declare global {
@@ -130,7 +129,6 @@ export default function App() {
     }
   }, [setLang]);
 
-  // 🌸 레몬스퀴지 결제 성공 시 토큰 강제 갱신 및 화면 정돈
   useEffect(() => {
     if (typeof window !== 'undefined') {
       if (window.createLemonSqueezy) {
@@ -689,7 +687,6 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // 🌸 예외 처리 및 방어 로직이 강화된 분석 함수
   const handleAnalyze = async () => {
     if (!currentUser) {
       showAlert(t('loginGateMsg'));
@@ -711,7 +708,6 @@ export default function App() {
 
       const result = await analyzeJapanese(inputText, lang, imagePayload, deviceId);
       
-      // AI 응답 결과 구조 방어 검증
       if (!result || typeof result !== 'object') {
         throw new Error('INVALID_RESPONSE_FORMAT');
       }
@@ -740,8 +736,8 @@ export default function App() {
         setErrorMessage(t('japaneseOnlyAlert'));
       } else if (errMessage === "UNAUTHORIZED") {
         setErrorMessage(t('sessionExpiredAlert'));
-      } else if (errMessage === "PARSE_ERROR" || errMessage.includes("JSON")) {
-        setErrorMessage(t('parseErrorAlert') || '분석 결과를 받아오지 못했습니다. 잠시 후 다시 시도해주세요.');
+      } else if (errMessage === "PARSE_ERROR") {
+        setErrorMessage(t('parseErrorAlert'));
       } else {
         setErrorMessage(`⚠️ ${errMessage}`);
       }
@@ -753,7 +749,6 @@ export default function App() {
     }
   };
 
-  // 🌸 분석 시점의 카드 언어를 유지하여 저장
   const handleAddCardToDeck = (word: WordInfo, cardLang: Lang) => {
     if (!word) return;
 
@@ -1161,11 +1156,9 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-slate-800 font-sans border-t-4 border-rose-600 relative pb-20 flex flex-col justify-between">
       <div>
-        {/* 🌸 헤더 영역 🌸 */}
         <header className="bg-white border-b border-rose-100 shadow-2xs sticky top-0 z-40 min-h-16 py-2">
           <div className="max-w-7xl mx-auto px-3 sm:px-4 h-full grid grid-cols-3 items-center gap-2">
             
-            {/* 좌측: 탭 메뉴 */}
             <div className="flex items-center space-x-2 justify-start">
               <div className="hidden lg:flex space-x-1 bg-slate-100 p-1 rounded-xl shrink-0">
                 <button
@@ -1189,7 +1182,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* 중앙: 로고 */}
             <div className="flex items-center justify-center">
               <button 
                 onClick={() => setActiveTab('analyze')}
@@ -1208,7 +1200,6 @@ export default function App() {
               </button>
             </div>
 
-            {/* 우측: 버튼 그룹 */}
             <div className="flex items-center justify-end space-x-1.5 sm:space-x-2">
               <button
                 onClick={() => setIsPricingModalOpen(true)}
@@ -1505,7 +1496,6 @@ export default function App() {
                 {analysisResult && (
                   <div className="space-y-4">
                     {(() => {
-                      // 🌸 분석 시점의 언어 고정 기준
                       const cardLang = analysisResult.resultLang || lang;
 
                       return (
@@ -1615,7 +1605,7 @@ export default function App() {
                             </div>
                           </div>
 
-                          {/* 🌸 주요 단어 카드 */}
+                          {/* 주요 단어 카드 */}
                           {analysisResult.wordList && analysisResult.wordList.length > 0 && (
                             <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
                               <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
@@ -1644,7 +1634,7 @@ export default function App() {
                                 items={analysisResult.wordList}
                                 title={t('wordCardTitle')}
                                 icon="📌"
-                                renderItem={(word) => (
+                                renderItem={(word: WordInfo) => (
                                   <div className="text-center w-full max-w-sm px-2 py-1">
                                     <div className="flex items-center justify-center space-x-2 mb-1">
                                       <span className="font-bold text-xl text-slate-900">{word.word}</span>
@@ -1682,7 +1672,7 @@ export default function App() {
                             </div>
                           )}
 
-                          {/* 🌸 한자 정보 카드 */}
+                          {/* 한자 정보 카드 */}
                           {analysisResult.kanjiList && analysisResult.kanjiList.length > 0 && (
                             <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
                               <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
@@ -1711,7 +1701,7 @@ export default function App() {
                                 items={analysisResult.kanjiList}
                                 title={t('kanjiCardTitle')}
                                 icon="🏮"
-                                renderItem={(k) => (
+                                renderItem={(k: KanjiInfo) => (
                                   <div className="text-center w-full max-w-sm px-2 py-1">
                                     <div className="flex justify-center items-center gap-1.5 mb-1">
                                       <span className="text-2xl font-bold text-slate-800">{k.kanji}</span>
@@ -1745,7 +1735,7 @@ export default function App() {
                             </div>
                           )}
 
-                          {/* 🌸 문법 구조 카드 */}
+                          {/* 문법 구조 카드 */}
                           {analysisResult.grammarList && analysisResult.grammarList.length > 0 && (
                             <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
                               <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
@@ -1774,7 +1764,7 @@ export default function App() {
                                 items={analysisResult.grammarList}
                                 title={t('grammarCardTitle')}
                                 icon="⛩️"
-                                renderItem={(g) => (
+                                renderItem={(g: GrammarInfo) => (
                                   <div className="text-center w-full max-w-md px-2 py-1">
                                     <span className="inline-block px-3 py-1 bg-rose-100 text-rose-800 font-bold text-sm rounded-md mb-2">
                                       {g.grammar}
@@ -2137,7 +2127,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* 🌸 푸터 영역 🌸 */}
       <footer className="footer-area w-full py-6 flex flex-col items-center justify-center border-t border-slate-200 bg-white mt-12 space-y-2 px-4 text-center">
         <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs font-bold text-slate-600">
           <button onClick={() => openLegalDoc('terms')} className="hover:text-rose-600 hover:underline cursor-pointer">
@@ -2169,7 +2158,6 @@ export default function App() {
         </p>
       </footer>
 
-      {/* 🌸 요금제 모달 🌸 */}
       {isPricingModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-rose-100 relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
@@ -2233,7 +2221,6 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {/* 3개월 이용권 */}
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition">
                     <div>
                       <span className="text-xs font-bold text-slate-500 block mb-1">
@@ -2256,7 +2243,6 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* 1년 이용권 */}
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition relative">
                     <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                       20% OFF
@@ -2282,7 +2268,6 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* 평생 이용권 */}
                   <div className="p-4 bg-rose-50/80 border border-rose-300 rounded-2xl flex flex-col justify-between text-center relative shadow-xs">
                     <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                       BEST
@@ -2319,7 +2304,6 @@ export default function App() {
         document.body
       )}
 
-      {/* 단어장 생성 모달 */}
       {isNewDeckModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-90 bg-slate-900/50 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-rose-100 relative">
