@@ -519,7 +519,8 @@ export default function App() {
     });
   };
 
-  const handleLemonSqueezyPayment = (planName: string, variantId: string) => {
+  // 🌸 레몬스퀴지 결제 모달 호출 함수 (전체 URL 및 UUID 지원)
+  const handleLemonSqueezyPayment = (planName: string, variantTarget: string) => {
     if (!agreePayPolicy) {
       showAlert(lang === 'ko' ? "결제 약관 및 이용 정책에 동의해 주세요." : "Please agree to the payment policy terms.");
       return;
@@ -533,8 +534,13 @@ export default function App() {
 
     sessionStorage.setItem('pendingPlanName', planName);
 
-    const checkoutUrl = `https://app.lemonsqueezy.com/checkout/buy/${variantId}?embed=1&checkout[email]=${encodeURIComponent(currentUser.email || '')}`;
-    
+    let checkoutUrl = '';
+    if (variantTarget.startsWith('http://') || variantTarget.startsWith('https://')) {
+      checkoutUrl = `${variantTarget}?embed=1&checkout[email]=${encodeURIComponent(currentUser.email || '')}`;
+    } else {
+      checkoutUrl = `https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/${variantTarget}?embed=1&checkout[email]=${encodeURIComponent(currentUser.email || '')}`;
+    }
+
     if (window.LemonSqueezy) {
       window.LemonSqueezy.Url.Open(checkoutUrl);
     } else {
@@ -1086,7 +1092,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-slate-800 font-sans border-t-4 border-rose-600 relative pb-20 flex flex-col justify-between">
       <div>
-        {/* 🌸 헤더 영역 (높이 및 패딩 확장으로 뭉개짐 방지) 🌸 */}
+        {/* 🌸 헤더 영역 🌸 */}
         <header className="bg-white border-b border-rose-100 shadow-2xs sticky top-0 z-40 min-h-16 py-2">
           <div className="max-w-7xl mx-auto px-3 sm:px-4 h-full grid grid-cols-3 items-center gap-2">
             
@@ -1133,7 +1139,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* 우측: 버튼 그룹 (줄바꿈 방지 적용) */}
+            {/* 우측: 버튼 그룹 */}
             <div className="flex items-center justify-end space-x-1.5 sm:space-x-2">
               <button
                 onClick={() => setIsPricingModalOpen(true)}
@@ -1933,7 +1939,7 @@ export default function App() {
                           onClick={() => toggleSpeech(quizState.quizCards[quizState.currentCardIndex].word)}
                           className={`text-sm p-1 rounded transition cursor-pointer ${
                             speakingText === quizState.quizCards[quizState.currentCardIndex].word
-                              ? 'bg-rose-600 text-white font-bold border border-rose-700'
+                              ? 'bg-rose-600 text-white hover:bg-rose-700 border border-rose-700'
                               : 'text-slate-400 hover:text-amber-600'
                           }`}
                         >
@@ -2050,7 +2056,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* 🌸 푸터 영역 (25% 확대 대상에서 제외) 🌸 */}
+      {/* 🌸 푸터 영역 🌸 */}
       <footer className="footer-area w-full py-6 flex flex-col items-center justify-center border-t border-slate-200 bg-white mt-12 space-y-2 px-4 text-center">
         <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs font-bold text-slate-600">
           <button onClick={() => openLegalDoc('terms')} className="hover:text-rose-600 hover:underline cursor-pointer">
@@ -2070,7 +2076,7 @@ export default function App() {
           <p>
             {lang === 'ko'
               ? '상호명: YomiYomi | 고객지원: support@yomiyomi-jp.com | 사업자등록번호: 588-26-01979 | 통신판매업신고: 제 2026-순천-7351 호'
-              : 'Company: YomiYomi | Support: support@yomiyomi-jp.com | Business ID: 588-26-01979 | E-Commerce Permit: 2026-JeonnamSuncheon-7351'}
+              : 'Company: YomiYomi | Support: support@yomiyomi-jp.com | Business ID: 588-26-01979 | E-Commerce Permit: 2026-Suncheon-7351'}
           </p>
           <p className="text-slate-400 text-[10px] pt-0.5">
             Our order process is conducted by our online reseller & Merchant of Record, Lemon Squeezy.
@@ -2082,7 +2088,7 @@ export default function App() {
         </p>
       </footer>
 
-      {/* 요금제 모달 */}
+      {/* 🌸 요금제 모달 (레몬스퀴지 체크아웃 버튼 연동) 🌸 */}
       {isPricingModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-rose-100 relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
@@ -2146,6 +2152,7 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {/* 3개월 이용권 */}
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition">
                     <div>
                       <span className="text-xs font-bold text-slate-500 block mb-1">
@@ -2158,13 +2165,14 @@ export default function App() {
                     </div>
                     <button
                       disabled={!agreePayPolicy}
-                      onClick={() => handleLemonSqueezyPayment(payModalI18n.pass3m, import.meta.env.VITE_LEMON_VARIANT_3MONTH || '1320112')}
+                      onClick={() => handleLemonSqueezyPayment(payModalI18n.pass3m, import.meta.env.VITE_LEMON_VARIANT_3MONTH || 'c190392a-86b8-4828-a4d6-dd88e54d8e53')}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
                       {payModalI18n.buyBtn}
                     </button>
                   </div>
 
+                  {/* 1년 이용권 */}
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition relative">
                     <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                       20% OFF
@@ -2180,13 +2188,14 @@ export default function App() {
                     </div>
                     <button
                       disabled={!agreePayPolicy}
-                      onClick={() => handleLemonSqueezyPayment(payModalI18n.pass1y, import.meta.env.VITE_LEMON_VARIANT_1YEAR || '1320177')}
+                      onClick={() => handleLemonSqueezyPayment(payModalI18n.pass1y, import.meta.env.VITE_LEMON_VARIANT_1YEAR || '3302e962-c15b-42b1-afda-f4272bd3a424')}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
                       {payModalI18n.buyBtn}
                     </button>
                   </div>
 
+                  {/* 평생 이용권 */}
                   <div className="p-4 bg-rose-50/80 border border-rose-300 rounded-2xl flex flex-col justify-between text-center relative shadow-xs">
                     <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                       BEST
@@ -2202,7 +2211,7 @@ export default function App() {
                     </div>
                     <button
                       disabled={!agreePayPolicy}
-                      onClick={() => handleLemonSqueezyPayment(payModalI18n.passLife, import.meta.env.VITE_LEMON_VARIANT_LIFETIME || '1320190')}
+                      onClick={() => handleLemonSqueezyPayment(payModalI18n.passLife, import.meta.env.VITE_LEMON_VARIANT_LIFETIME || 'c74e6951-6422-4bfe-a38d-ed18e989371d')}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
                       {payModalI18n.buyBtn}
@@ -2598,7 +2607,7 @@ export default function App() {
           text-rendering: optimizeLegibility;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
-          zoom: 1.25; /* 🌸 화면 전체 25% 확대 스케일 적용 */
+          zoom: 1.25; /* 🌸 화면 전체 25% 확대 스케일 고정 */
         }
 
         body {
@@ -2606,7 +2615,7 @@ export default function App() {
         }
 
         .footer-area {
-          zoom: 0.8; /* 🌸 푸터 영역만 원래 100% 원본 비율로 고정 (1/1.25 = 0.8) */
+          zoom: 0.8; /* 🌸 푸터 영역만 원본 비율 고정 (1 / 1.25 = 0.8) */
         }
 
         .app-logo-text, .app-logo-text * {
