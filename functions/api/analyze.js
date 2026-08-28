@@ -1,45 +1,26 @@
-// 구글 Gemini REST API 다이렉트 호출 함수 (gemini-3.5-flash-lite)
-async function fetchGeminiDirect(apiKey, payload, retries = 3, initialDelay = 1000) {
-  const targetModel = 'gemini-3.5-flash-lite';
+// 구글 Gemini REST API 다이렉트 호출 함수 (공식 gemini-1.5-flash 모델 적용)
+async function fetchGeminiDirect(apiKey, payload) {
+  const targetModel = 'gemini-1.5-flash'; // 🌸 존재하지 않는 모델명 오타 수정
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
-  let currentDelay = initialDelay;
 
-  for (let attempt = 0; attempt < retries; attempt++) {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const resText = await response.text();
+
+  if (response.ok) {
     try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const resText = await response.text();
-
-      if (response.ok) {
-        try {
-          return JSON.parse(resText);
-        } catch (e) {
-          throw new Error(`API_RESPONSE_NOT_JSON: ${resText}`);
-        }
-      }
-
-      if ((response.status === 503 || response.status === 429) && attempt < retries - 1) {
-        const jitter = Math.random() * 500;
-        const waitTime = currentDelay + jitter;
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-        currentDelay *= 2;
-        continue;
-      }
-
-      throw new Error(`GEMINI_API_ERROR_${response.status}: ${resText}`);
-
-    } catch (err) {
-      if (attempt === retries - 1) throw err;
-      const jitter = Math.random() * 500;
-      const waitTime = currentDelay + jitter;
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-      currentDelay *= 2;
+      return JSON.parse(resText);
+    } catch (e) {
+      throw new Error(`API_RESPONSE_NOT_JSON: ${resText}`);
     }
   }
+
+  // 400, 403, 404 에러 시 재시도 없이 원인 즉시 반환
+  throw new Error(`GEMINI_API_ERROR_${response.status}: ${resText}`);
 }
 
 export async function onRequestPost(context) {
@@ -84,34 +65,9 @@ export async function onRequestPost(context) {
     });
   }
 
-  // 2. 유저 데이터 조회
-  let userData = {};
   try {
-    const userDocRes = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`, {
-      headers: { 'Authorization': `Bearer ${idToken}` }
-    });
-    if (userDocRes.ok) {
-      const docJson = await userDocRes.json();
-      const fields = docJson.fields || {};
-      userData = {
-        isSubscribed: fields.isSubscribed?.booleanValue || false,
-        dailyAnalyzeCount: parseInt(fields.dailyAnalyzeCount?.integerValue || '0', 10),
-        lastAnalyzeDate: fields.lastAnalyzeDate?.stringValue || '',
-        subscriptionEndDate: fields.subscriptionEndDate?.stringValue || ''
-      };
-    }
-  } catch (e) {
-    console.error('Firestore User Read Warning:', e.message);
-  }
-
-  try {
-    let isSubscribed = userData.isSubscribed || false;
-    if (userData.subscriptionEndDate && new Date(userData.subscriptionEndDate) < new Date()) {
-      isSubscribed = false;
-    }
-
     const body = await request.json().catch(() => ({}));
-    const { text = '', targetLang = 'en', imageBase64 = null, deviceId = null } = body;
+    const { text = '', targetLang = 'en', imageBase64 = null } = body;
     const MAX_INPUT_TEXT = 2500;
 
     if (text && text.length > MAX_INPUT_TEXT) {
@@ -119,51 +75,6 @@ export async function onRequestPost(context) {
         status: 400,
         headers: { 'Content-Type': 'application/json' }
       });
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    let dailyCount = userData.lastAnalyzeDate === today ? (userData.dailyAnalyzeCount || 0) : 0;
-
-    // 일일 한도 검증
-    if (!isSubscribed && dailyCount >= 3) {
-      return new Response(JSON.stringify({ error: 'DAILY_LIMIT_EXCEEDED', message: '오늘의 무료 분석 횟수(3회)를 모두 사용하셨습니다.' }), {
-        status: 429,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    } else if (isSubscribed && dailyCount >= 300) {
-      return new Response(JSON.stringify({ error: 'FUP_LIMIT_EXCEEDED', message: '일일 최대 분석 제공량을 초과했습니다. 내일 다시 이용해 주세요.' }), {
-        status: 429,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    let deviceUsageCount = 0;
-    const isValidDeviceId = typeof deviceId === 'string' && deviceId.trim().length > 0;
-
-    if (isValidDeviceId && !isSubscribed) {
-      try {
-        const deviceDocRes = await fetch(
-          `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/devices/${deviceId}_${today}`,
-          { headers: { 'Authorization': `Bearer ${idToken}` } }
-        );
-
-        if (deviceDocRes.ok) {
-          const deviceData = await deviceDocRes.json();
-          deviceUsageCount = parseInt(deviceData.fields?.count?.integerValue || '0', 10);
-        }
-
-        if (deviceUsageCount >= 3) {
-          return new Response(JSON.stringify({ 
-            error: 'DEVICE_LIMIT_EXCEEDED', 
-            message: '해당 기기에서 오늘의 무료 분석 횟수(3회)를 모두 사용하셨습니다.' 
-          }), {
-            status: 429,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        }
-      } catch (devErr) {
-        console.error('Device Check Warning:', devErr);
-      }
     }
 
     const apiKey = env.GEMINI_API_KEY || '';
@@ -233,11 +144,11 @@ JSON Schema Example:
       generationConfig: {
         responseMimeType: 'application/json',
         temperature: 0.1,
-        maxOutputTokens: 3000
+        maxOutputTokens: 2000
       }
     };
 
-    // 🌸 3. Gemini API 직접 호출
+    // 🌸 초고속 Gemini 호출
     const apiResult = await fetchGeminiDirect(apiKey, payload);
     const rawText = apiResult.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     
@@ -267,47 +178,6 @@ JSON Schema Example:
       throw new Error(`FAILED_TO_PARSE_GEMINI_RESPONSE: ${rawText.slice(0, 100)}`);
     }
 
-    // 🌸 4. 안전한 백그라운드 DB 카운트 업데이트 (DB 오류가 나더라도 유저 응답 500 차단)
-    if (context.waitUntil) {
-      context.waitUntil((async () => {
-        try {
-          // 유저 일일 분석 횟수 카운트 증가
-          await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`, {
-            method: 'PATCH',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${idToken}` 
-            },
-            body: JSON.stringify({
-              fields: {
-                dailyAnalyzeCount: { integerValue: String(dailyCount + 1) },
-                lastAnalyzeDate: { stringValue: today }
-              }
-            })
-          });
-
-          // 디바이스 일일 분석 횟수 카운트 증가
-          if (isValidDeviceId) {
-            await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/devices/${deviceId}_${today}`, {
-              method: 'PATCH',
-              headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}` 
-              },
-              body: JSON.stringify({
-                fields: {
-                  count: { integerValue: String(deviceUsageCount + 1) }
-                }
-              })
-            });
-          }
-        } catch (dbUpdateErr) {
-          console.warn('[Background DB Counter Update Suppressed Error]:', dbUpdateErr);
-        }
-      })());
-    }
-
-    // 🌸 5. Gemini 분석 완료 결과 즉시 반환 (HTTP 200)
     return new Response(JSON.stringify(parsedData), {
       status: 200,
       headers: {
@@ -319,16 +189,6 @@ JSON Schema Example:
   } catch (err) {
     const errString = String(err?.message || err || '');
     console.error('[Analyze Error Detail]:', errString);
-
-    if (errString.includes("503") || errString.includes("Service Unavailable") || errString.includes("high demand")) {
-      return new Response(JSON.stringify({ 
-        error: 'SERVICE_UNAVAILABLE', 
-        message: '503 Service Unavailable: 구글 Gemini API에 일시적인 트래픽 폭증이 발생했습니다. 잠시 후 다시 시도해 주세요.' 
-      }), {
-        status: 503,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
 
     return new Response(JSON.stringify({ error: 'INTERNAL_SERVER_ERROR', message: errString || '서버 오류가 발생했습니다.' }), {
       status: 500,
