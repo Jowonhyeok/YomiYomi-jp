@@ -108,7 +108,6 @@ export default function App() {
     }
   }, [setLang]);
 
-  // 🍋 Lemon Squeezy SDK 초기화 및 이벤트 등록 🍋
   useEffect(() => {
     if (typeof window !== 'undefined') {
       if (window.createLemonSqueezy) {
@@ -533,7 +532,6 @@ export default function App() {
     });
   };
 
-  // 🍋 레몬스퀴지 모달 결제 오픈 함수 🍋
   const handleLemonSqueezyPayment = (planName: string, variantId: string) => {
     if (!agreePayPolicy) {
       showAlert(lang === 'ko' ? "결제 약관 및 이용 정책에 동의해 주세요." : "Please agree to the payment policy terms.");
@@ -760,7 +758,7 @@ export default function App() {
     if (!newDeckInputName.trim()) return;
     const newDeck: Deck = {
       id: String(Date.now()),
-      name: newDeckInputName.trim(),
+      name: newDeckInputName.trim().slice(0, 20),
       cards: [],
       createdAt: new Date().toISOString()
     };
@@ -1006,12 +1004,108 @@ export default function App() {
 
   const currentLangObj = LANG_OPTIONS.find(l => l.code === lang) || LANG_OPTIONS[0];
 
+  // 요금제 모달 텍스트 다국어 사전
+  const payModalI18n = {
+    ko: {
+      title: '프리미엄 이용권 구매',
+      sub: '한 번 결제로 정기 자동 결제 없이 안전하게 이용해보세요.',
+      agree1: '[필수] 결제 약관 및 ',
+      agree2: '환불·이용 정책',
+      agree3: '에 동의합니다.',
+      pass3m: '3개월 이용권',
+      pass1y: '1년 이용권',
+      passLife: '평생 이용권',
+      mo3m: '월 $4.00 상당',
+      mo1y: '월 $3.20 상당',
+      lifeDesc: '무제한 영구 이용',
+      buyBtn: '구매하기',
+      footerNotice: '모든 결제는 1회성 단발성 결제로 진행되며 자동 연장되지 않습니다.'
+    },
+    en: {
+      title: 'Buy Premium Access',
+      sub: 'One-time payment with no recurring charges.',
+      agree1: '[Required] I agree to the payment terms and ',
+      agree2: 'Refund Policy',
+      agree3: '.',
+      pass3m: '3-Month Pass',
+      pass1y: '1-Year Pass',
+      passLife: 'Lifetime Pass',
+      mo3m: '$4.00 / mo',
+      mo1y: '$3.20 / mo',
+      lifeDesc: 'Unlimited Forever',
+      buyBtn: 'Buy Now',
+      footerNotice: 'All purchases are single payments and will not auto-renew.'
+    },
+    'zh-CN': {
+      title: '购买高级通行证',
+      sub: '一次性支付，无自动续费，安全放心。',
+      agree1: '[必填] 我同意支付条款及',
+      agree2: '退款政策',
+      agree3: '。',
+      pass3m: '3个月通行证',
+      pass1y: '1年通行证',
+      passLife: '终身通行证',
+      mo3m: '约 $4.00 / 月',
+      mo1y: '约 $3.20 / 月',
+      lifeDesc: '永久无限使用',
+      buyBtn: '立即购买',
+      footerNotice: '所有支付均为一次性购买，不会自动续费。'
+    },
+    'zh-TW': {
+      title: '購買高級通行證',
+      sub: '一次性支付，無自動續費，安全放心。',
+      agree1: '[必填] 我同意支付條款及',
+      agree2: '退款政策',
+      agree3: '。',
+      pass3m: '3個月通行證',
+      pass1y: '1年通行證',
+      passLife: '終身通行證',
+      mo3m: '約 $4.00 / 月',
+      mo1y: '約 $3.20 / 月',
+      lifeDesc: '永久無限使用',
+      buyBtn: '立即購買',
+      footerNotice: '所有支付均為一次性購買，不會自動續費。'
+    },
+    ja: {
+      title: 'プレミアムパスのご購入',
+      sub: '一回限りの決済で、自動更新なしで安心してお使いいただけます。',
+      agree1: '[必須] 決済利用規約および',
+      agree2: '返金ポリシー',
+      agree3: 'に同意します。',
+      pass3m: '3ヶ月パス',
+      pass1y: '1年パス',
+      passLife: '無制限パス',
+      mo3m: '月額 $4.00 相当',
+      mo1y: '月額 $3.20 相当',
+      lifeDesc: '無制限・永久利用',
+      buyBtn: '購入する',
+      footerNotice: 'すべての決済は一回限りの単品購入であり、自動更新されません。'
+    }
+  }[lang] || {
+    title: 'Buy Premium Access',
+    sub: 'One-time payment with no recurring charges.',
+    agree1: '[Required] I agree to the payment terms and ',
+    agree2: 'Refund Policy',
+    agree3: '.',
+    pass3m: '3-Month Pass',
+    pass1y: '1-Year Pass',
+    passLife: 'Lifetime Pass',
+    mo3m: '$4.00 / mo',
+    mo1y: '$3.20 / mo',
+    lifeDesc: 'Unlimited Forever',
+    buyBtn: 'Buy Now',
+    footerNotice: 'All purchases are single payments and will not auto-renew.'
+  };
+
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-slate-800 font-sans border-t-4 border-rose-600 relative pb-20 flex flex-col justify-between">
       <div>
+        {/* 🌸 헤더 영역 (그리드 레이아웃 적용으로 로고 완벽 중앙 정렬) 🌸 */}
         <header className="bg-white border-b border-rose-100 shadow-2xs sticky top-0 z-40 h-14">
-          <div className="max-w-7xl mx-auto px-3 sm:px-4 h-full flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 h-full grid grid-cols-3 items-center">
+            
+            {/* 좌측: 탭 메뉴 */}
+            <div className="flex items-center space-x-2 justify-start">
               <div className="hidden lg:flex space-x-1 bg-slate-100 p-0.5 rounded-lg">
                 <button
                   onClick={() => setActiveTab('analyze')}
@@ -1034,13 +1128,14 @@ export default function App() {
               </div>
             </div>
 
+            {/* 중앙: 정중앙 로고 위치 */}
             <div className="flex items-center justify-center">
               <button 
                 onClick={() => setActiveTab('analyze')}
                 className="flex items-center space-x-1.5 sm:space-x-2 focus:outline-none group cursor-pointer"
               >
                 <span className="text-xl sm:text-2xl group-hover:scale-110 transition select-none">🌸</span>
-                <h1 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 group-hover:text-rose-600 transition flex items-center gap-1.5 app-logo-text">
+                <h1 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 group-hover:text-rose-600 transition flex items-center gap-1.5 app-logo-text whitespace-nowrap">
                   <span>YomiYomi</span>
                   {currentUser?.isSubscribed && (
                     <span className="font-black text-rose-600 text-lg sm:text-2xl ml-0.5">
@@ -1052,7 +1147,8 @@ export default function App() {
               </button>
             </div>
 
-            <div className="flex items-center space-x-1.5 sm:space-x-2">
+            {/* 우측: 우측 상단 버튼 그룹 */}
+            <div className="flex items-center justify-end space-x-1.5 sm:space-x-2">
               <button
                 onClick={() => setIsPricingModalOpen(true)}
                 className="px-3 py-1.5 sm:px-3.5 sm:py-1.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition flex items-center gap-1 active:scale-95 cursor-pointer shrink-0"
@@ -1452,7 +1548,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* 📌 핵심 단어 카드 테이블 */}
                     {analysisResult.wordList && analysisResult.wordList.length > 0 && (
                       <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
                         <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
@@ -1519,7 +1614,6 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* 🏮 핵심 한자 카드 테이블 */}
                     {analysisResult.kanjiList && analysisResult.kanjiList.length > 0 && (
                       <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
                         <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
@@ -1582,7 +1676,6 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* ⛩️ 핵심 문법 카드 테이블 */}
                     {analysisResult.grammarList && analysisResult.grammarList.length > 0 && (
                       <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
                         <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
@@ -1658,8 +1751,8 @@ export default function App() {
                       onClick={() => setSelectedDeckId(deck.id)}
                       className={`p-3.5 rounded-2xl border cursor-pointer transition ${selectedDeckId === deck.id ? 'bg-rose-50 border-rose-400 ring-2 ring-rose-100' : 'bg-white border-slate-200 hover:border-slate-300'}`}
                     >
-                      <div className="flex justify-between items-start mb-1.5">
-                        <h3 className="font-bold text-slate-800 text-xs sm:text-sm">{deck.name}</h3>
+                      <div className="flex justify-between items-start mb-1.5 gap-2">
+                        <h3 className="font-bold text-slate-800 text-xs sm:text-sm truncate max-w-[180px]">{deck.name}</h3>
                         {decks.length > 1 && (
                           <button
                             onClick={(e) => { 
@@ -1667,7 +1760,7 @@ export default function App() {
                               e.preventDefault();
                               openDeleteModal(deck.id, deck.name); 
                             }}
-                            className="text-xs text-rose-500 hover:text-rose-700 font-bold p-1 bg-rose-50 hover:bg-rose-100 rounded transition cursor-pointer"
+                            className="text-xs text-rose-500 hover:text-rose-700 font-bold p-1 bg-rose-50 hover:bg-rose-100 rounded transition cursor-pointer shrink-0"
                           >
                             {t('delete')}
                           </button>
@@ -1681,7 +1774,7 @@ export default function App() {
                 <div className="bg-[#FFFFFF] p-4 rounded-2xl shadow-xs border border-rose-100">
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b">
                     <div className="flex items-center space-x-2">
-                      <span className="px-2.5 py-1 bg-rose-100 text-rose-700 font-bold text-xs sm:text-sm rounded-md">
+                      <span className="px-2.5 py-1 bg-rose-100 text-rose-700 font-bold text-xs sm:text-sm rounded-md max-w-[150px] truncate">
                         {currentActiveDeck.name}
                       </span>
                       <span className="text-xs sm:text-sm font-bold text-slate-800">{t('wordCardListTitle')}</span>
@@ -1769,7 +1862,7 @@ export default function App() {
                       className="mt-2 px-6 py-2.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-lg transition active:scale-95 cursor-pointer flex items-center gap-1.5"
                     >
                       <span>👑</span>
-                      <span>{lang === 'ko' ? '이용권 구매하기' : 'Buy Membership'}</span>
+                      <span>{payModalI18n.buyBtn}</span>
                     </button>
                   </div>
                 ) : !quizState ? (
@@ -1802,7 +1895,7 @@ export default function App() {
                                 }}
                                 className="rounded text-rose-600 focus:ring-rose-400"
                               />
-                              <span className="text-xs sm:text-sm font-bold text-slate-800">{deck.name}</span>
+                              <span className="text-xs sm:text-sm font-bold text-slate-800 truncate max-w-[180px]">{deck.name}</span>
                             </div>
                             <span className="text-xs text-slate-400">{(deck.cards || []).length}{t('unitCount')}</span>
                           </label>
@@ -1971,7 +2064,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* 🌸 푸터 영역 🌸 */}
       <footer className="w-full py-6 flex flex-col items-center justify-center border-t border-slate-200 bg-white mt-12 space-y-2 px-4 text-center">
         <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs font-bold text-slate-600">
           <button onClick={() => openLegalDoc('terms')} className="hover:text-rose-600 hover:underline cursor-pointer">
@@ -2003,7 +2095,7 @@ export default function App() {
         </p>
       </footer>
 
-      {/* 💳 프리미엄 이용권 요금제 모달 💳 */}
+      {/* 💳 프리미엄 이용권 요금제 모달 (전 언어 다국어 완벽 지원) 💳 */}
       {isPricingModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-rose-100 relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
@@ -2044,8 +2136,8 @@ export default function App() {
               <>
                 <div className="text-center space-y-1">
                   <span className="text-3xl block">👑</span>
-                  <h2 className="text-lg font-black text-slate-900">{lang === 'ko' ? '프리미엄 이용권 구매' : 'Buy Premium Access'}</h2>
-                  <p className="text-xs sm:text-sm text-slate-500">{lang === 'ko' ? '한 번 결제로 정기 자동 결제 없이 안전하게 이용해보세요.' : 'One-time payment with no recurring charges.'}</p>
+                  <h2 className="text-lg font-black text-slate-900">{payModalI18n.title}</h2>
+                  <p className="text-xs sm:text-sm text-slate-500">{payModalI18n.sub}</p>
                 </div>
 
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-left my-2 space-y-1">
@@ -2057,95 +2149,85 @@ export default function App() {
                       className="mt-0.5 rounded text-rose-600 focus:ring-rose-400 shrink-0"
                     />
                     <span className="leading-tight text-xs sm:text-sm">
-                      {lang === 'ko' && (
-                        <>[필수] 결제 약관 및 <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">환불·이용 정책</button>에 동의합니다.</>
-                      )}
-                      {lang === 'en' && (
-                        <>[Required] I agree to the payment terms and the <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">Refund Policy</button>.</>
-                      )}
-                      {lang === 'zh-CN' && (
-                        <>[必填] 我同意支付条款及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款政策</button>。</>
-                      )}
-                      {lang === 'zh-TW' && (
-                        <>[必填] 我同意支付條款及<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">退款政策</button>。</>
-                      )}
-                      {lang === 'ja' && (
-                        <>[必須] 決済利用規約および<button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">返金ポリシー</button>に同意します。</>
-                      )}
+                      {payModalI18n.agree1}
+                      <button type="button" onClick={() => openLegalDoc('refund')} className="text-rose-600 underline font-bold">
+                        {payModalI18n.agree2}
+                      </button>
+                      {payModalI18n.agree3}
                     </span>
                   </label>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {/* 1. 3개월 이용권 ($12.00) */}
+                  {/* 1. 3개월 이용권 */}
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition">
                     <div>
                       <span className="text-xs font-bold text-slate-500 block mb-1">
-                        {lang === 'ko' ? '3개월 이용권' : '3-Month Access'}
+                        {payModalI18n.pass3m}
                       </span>
                       <div className="text-base font-black text-slate-900 mb-1">$12.00 USD</div>
                       <span className="text-xs text-slate-400">
-                        {lang === 'ko' ? '월 $4.00 상당' : '$4.00 / mo'}
+                        {payModalI18n.mo3m}
                       </span>
                     </div>
                     <button
                       disabled={!agreePayPolicy}
-                      onClick={() => handleLemonSqueezyPayment('3개월 이용권', import.meta.env.VITE_LEMON_VARIANT_3MONTH || '1320112')}
+                      onClick={() => handleLemonSqueezyPayment(payModalI18n.pass3m, import.meta.env.VITE_LEMON_VARIANT_3MONTH || '1320112')}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
-                      {lang === 'ko' ? '구매하기' : 'Buy Now'}
+                      {payModalI18n.buyBtn}
                     </button>
                   </div>
 
-                  {/* 2. 1년 이용권 ($38.40) */}
+                  {/* 2. 1년 이용권 */}
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col justify-between text-center hover:border-rose-300 transition relative">
                     <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                       20% OFF
                     </span>
                     <div>
                       <span className="text-xs font-bold text-slate-500 block mb-1">
-                        {lang === 'ko' ? '1년 이용권' : '1-Year Access'}
+                        {payModalI18n.pass1y}
                       </span>
                       <div className="text-base font-black text-slate-900 mb-1">$38.40 USD</div>
                       <span className="text-xs text-amber-700 font-semibold">
-                        {lang === 'ko' ? '월 $3.20 상당' : '$3.20 / mo'}
+                        {payModalI18n.mo1y}
                       </span>
                     </div>
                     <button
                       disabled={!agreePayPolicy}
-                      onClick={() => handleLemonSqueezyPayment('1년 이용권', import.meta.env.VITE_LEMON_VARIANT_1YEAR || '1320177')}
+                      onClick={() => handleLemonSqueezyPayment(payModalI18n.pass1y, import.meta.env.VITE_LEMON_VARIANT_1YEAR || '1320177')}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
-                      {lang === 'ko' ? '구매하기' : 'Buy Now'}
+                      {payModalI18n.buyBtn}
                     </button>
                   </div>
 
-                  {/* 3. 평생 이용권 ($45.00) */}
+                  {/* 3. 평생 이용권 */}
                   <div className="p-4 bg-rose-50/80 border border-rose-300 rounded-2xl flex flex-col justify-between text-center relative shadow-xs">
                     <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                       BEST
                     </span>
                     <div>
                       <span className="text-xs font-bold text-rose-700 block mb-1">
-                        {lang === 'ko' ? '평생 이용권' : 'Lifetime Pass'}
+                        {payModalI18n.passLife}
                       </span>
                       <div className="text-base font-black text-rose-900 mb-1">$45.00 USD</div>
                       <span className="text-xs text-rose-600 font-bold">
-                        {lang === 'ko' ? '무제한 영구 이용' : 'Unlimited Forever'}
+                        {payModalI18n.lifeDesc}
                       </span>
                     </div>
                     <button
                       disabled={!agreePayPolicy}
-                      onClick={() => handleLemonSqueezyPayment('평생 이용권', import.meta.env.VITE_LEMON_VARIANT_LIFETIME || '1320190')}
+                      onClick={() => handleLemonSqueezyPayment(payModalI18n.passLife, import.meta.env.VITE_LEMON_VARIANT_LIFETIME || '1320190')}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
-                      {lang === 'ko' ? '구매하기' : 'Buy Now'}
+                      {payModalI18n.buyBtn}
                     </button>
                   </div>
                 </div>
 
                 <p className="text-xs text-slate-400 text-center">
-                  {lang === 'ko' ? '모든 결제는 1회성 단발성 결제로 진행되며 자동 연장되지 않습니다.' : 'All purchases are single payments and will not auto-renew.'}
+                  {payModalI18n.footerNotice}
                 </p>
               </>
             )}
@@ -2154,6 +2236,7 @@ export default function App() {
         document.body
       )}
 
+      {/* 📂 단어장 생성 모달 (최대 20자 글자수 제한 적용) 📂 */}
       {isNewDeckModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-90 bg-slate-900/50 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-rose-100 relative">
@@ -2170,13 +2253,19 @@ export default function App() {
             </div>
 
             <div className="space-y-3">
-              <input
-                type="text"
-                value={newDeckInputName}
-                onChange={(e) => setNewDeckInputName(e.target.value)}
-                placeholder={t('newDeckModalPlaceholder')}
-                className="w-full text-xs sm:text-sm p-2.5 border border-slate-200 rounded-xl outline-none focus:border-rose-400 bg-slate-50 font-medium text-center"
-              />
+              <div>
+                <input
+                  type="text"
+                  maxLength={20}
+                  value={newDeckInputName}
+                  onChange={(e) => setNewDeckInputName(e.target.value.slice(0, 20))}
+                  placeholder={t('newDeckModalPlaceholder')}
+                  className="w-full text-xs sm:text-sm p-2.5 border border-slate-200 rounded-xl outline-none focus:border-rose-400 bg-slate-50 font-medium text-center"
+                />
+                <p className="text-[10px] text-slate-400 text-right mt-1 font-semibold">
+                  {newDeckInputName.length} / 20
+                </p>
+              </div>
 
               <div className="flex space-x-2 pt-1">
                 <button
