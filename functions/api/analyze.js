@@ -97,15 +97,12 @@ export async function onRequestPost(context) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // 🌸 gemini-3.5-flash-lite 모델 유지 + thinkingBudget: 0 설정으로 2분 딜레이 해결
+    // 🌸 gemini-3.5-flash-lite 모델 유지 및 호환 가능한 기본 옵션 설정
     const model = genAI.getGenerativeModel({
       model: 'gemini-3.5-flash-lite',
       generationConfig: { 
         responseMimeType: 'application/json',
-        temperature: 0.2,
-        thinkingConfig: {
-          thinkingBudget: 0
-        }
+        temperature: 0.2
       }
     });
 
@@ -169,7 +166,6 @@ export async function onRequestPost(context) {
     const errString = String(err?.message || err || '');
     console.error('[Analyze Error Detail]:', errString);
 
-    // 🌸 구글 API 503 과부하 (high demand/Service Unavailable) 발생 시 503 HTTP 응답 생성
     if (
       errString.includes("503") || 
       errString.includes("Service Unavailable") || 
