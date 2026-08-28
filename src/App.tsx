@@ -739,7 +739,8 @@ export default function App() {
     }
   };
 
-  const handleAddCardToDeck = (word: WordInfo) => {
+  // 🌸 분석 시점의 카드 언어를 유지하여 저장
+  const handleAddCardToDeck = (word: WordInfo, cardLang: Lang) => {
     if (!word) return;
 
     const currentDeckExists = (decks || []).some(d => String(d.id) === String(selectedDeckId));
@@ -749,8 +750,8 @@ export default function App() {
       id: String(Date.now() + '_' + Math.random().toString(36).substr(2, 5)),
       word: String(word.word || '').trim(),
       reading: String(word.reading || '').trim(),
-      partOfSpeech: String(word.partOfSpeech || '단어').trim(),
-      meaning: getLocalizedText(word.meaning, lang),
+      partOfSpeech: getLocalizedPOS(word.partOfSpeech, cardLang),
+      meaning: getLocalizedText(word.meaning, cardLang),
       jlpt: String(word.jlpt || '').trim()
     };
 
@@ -776,24 +777,24 @@ export default function App() {
     }
   };
 
-  const handleAddKanjiToDeck = (k: KanjiInfo) => {
+  const handleAddKanjiToDeck = (k: KanjiInfo, cardLang: Lang) => {
     handleAddCardToDeck({
       word: k.kanji,
       reading: k.readings,
-      partOfSpeech: '한자',
-      meaning: getLocalizedText(k.meaning, lang),
+      partOfSpeech: 'kanji',
+      meaning: getLocalizedText(k.meaning, cardLang),
       jlpt: '한자'
-    });
+    }, cardLang);
   };
 
-  const handleAddGrammarToDeck = (g: GrammarInfo) => {
+  const handleAddGrammarToDeck = (g: GrammarInfo, cardLang: Lang) => {
     handleAddCardToDeck({
       word: g.grammar,
-      reading: '문법',
-      partOfSpeech: '문법',
-      meaning: getLocalizedText(g.explanation, lang),
+      reading: 'grammar',
+      partOfSpeech: 'grammar',
+      meaning: getLocalizedText(g.explanation, cardLang),
       jlpt: '문법'
-    });
+    }, cardLang);
   };
 
   const handleCreateDeck = () => {
@@ -1489,288 +1490,300 @@ export default function App() {
 
                 {analysisResult && (
                   <div className="space-y-4">
-                    <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100">
-                      <div className="flex flex-wrap justify-between items-center mb-3 pb-2 border-b border-slate-100 gap-2">
-                        <div className="flex items-center space-x-2">
-                          <h3 className="text-sm font-bold text-slate-600 flex items-center gap-1.5">
-                            <span>🎏</span> {t('noteTitle')}
-                          </h3>
-                          <button
-                            onClick={() => toggleSpeech(inputText)}
-                            className={`p-1.5 text-xs sm:text-sm font-bold rounded-md transition flex items-center justify-center cursor-pointer ${
-                              speakingText === inputText
-                                ? 'bg-rose-600 text-white hover:bg-rose-700 border border-rose-700'
-                                : 'bg-amber-100 hover:bg-amber-200 text-amber-800'
-                            }`}
-                          >
-                            <span>{speakingText === inputText ? '⏹️' : '🔊'}</span>
-                          </button>
-                        </div>
-                        
-                        <div className="flex flex-wrap items-center space-x-2 text-xs sm:text-sm bg-slate-50 p-1.5 rounded-xl border border-slate-200 gap-y-1">
-                          <div className="flex items-center space-x-1">
-                            <button
-                              onClick={() => setFontSize(prev => Math.max(14, prev - 2))}
-                              className="px-2 py-0.5 bg-white border rounded text-slate-700 font-bold hover:bg-slate-100 text-xs cursor-pointer"
-                            >
-                              A-
-                            </button>
-                            <span className="text-xs font-semibold text-slate-500 w-8 text-center">{fontSize}px</span>
-                            <button
-                              onClick={() => setFontSize(prev => Math.min(28, prev + 2))}
-                              className="px-2 py-0.5 bg-white border rounded text-slate-700 font-bold hover:bg-slate-100 text-xs cursor-pointer"
-                            >
-                              A+
-                            </button>
-                          </div>
+                    {(() => {
+                      // 🌸 분석 시점의 언어 고정 기준
+                      const cardLang = analysisResult.resultLang || lang;
 
-                          <div className="flex items-center space-x-1.5 border-l border-slate-200 pl-2">
-                            <button
-                              onClick={() => setReadingDisplayMode(readingDisplayMode === 'off' ? 'furigana' : 'off')}
-                              className={`px-3 py-1 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer ${
-                                readingDisplayMode !== 'off'
-                                  ? 'bg-rose-600 text-white hover:bg-rose-700' 
-                                  : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                              }`}
-                            >
-                              {t('modeYomigana')} {readingDisplayMode !== 'off' ? 'On' : 'Off'}
-                            </button>
-                            <button
-                              onClick={() => setShowTranslation(!showTranslation)}
-                              className={`px-3 py-1 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer ${
-                                showTranslation
-                                  ? 'bg-sky-600 text-white hover:bg-sky-700' 
-                                  : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                              }`}
-                            >
-                              {t('modeTranslate')} {showTranslation ? 'On' : 'Off'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div 
-                        style={{
-                          fontSize: `${fontSize}px`,
-                          fontFamily: 'sans-serif'
-                        }}
-                        className="note-content-area p-4 bg-[#FAF8F5] rounded-xl border border-amber-100 space-y-2.5"
-                      >
-                        {analysisResult.rubySentences && analysisResult.rubySentences.length > 0 ? (
-                          analysisResult.rubySentences.map((rawSentence, sIdx) => {
-                            const sentenceStr = typeof rawSentence === 'string' ? rawSentence : JSON.stringify(rawSentence);
-                            const tokens = parseRubySentence(sentenceStr);
-
-                            return (
-                              <p key={sIdx} className="leading-relaxed">
-                                {tokens.map((token, tIdx) => {
-                                  if (!token.reading) {
-                                    return <span key={tIdx}>{token.text}</span>;
-                                  }
-
-                                  if (readingDisplayMode === 'furigana' || readingDisplayMode === 'yomigana') {
-                                    return (
-                                      <ruby key={tIdx} className="inline-ruby mx-[1px]">
-                                        {token.text}
-                                        <rt className="text-rose-600 font-bold text-[0.65em]">{token.reading}</rt>
-                                      </ruby>
-                                    );
-                                  } else {
-                                    return <span key={tIdx}>{token.text}</span>;
-                                  }
-                                })}
-                              </p>
-                            );
-                          })
-                        ) : (
-                          <p className="text-slate-400 text-xs sm:text-sm">No analyzed sentences found.</p>
-                        )}
-                        
-                        {showTranslation && analysisResult.translatedText && (
-                          <div className="mt-4 pt-3 border-t border-amber-200/50 text-sm sm:text-base font-bold text-slate-700">
-                            {analysisResult.translatedText}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {analysisResult.wordList && analysisResult.wordList.length > 0 && (
-                      <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
-                        <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs sm:text-sm text-slate-600 font-semibold">{t('targetDeck')}</span>
-                            <select
-                              value={selectedDeckId}
-                              onChange={(e) => setSelectedDeckId(e.target.value)}
-                              className="text-xs sm:text-sm border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-rose-400 cursor-pointer"
-                            >
-                              {decks.map(d => (
-                                <option key={d.id} value={d.id}>{d.name} ({(d.cards || []).length})</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <button
-                            onClick={() => setHideWordMeanings(!hideWordMeanings)}
-                            className={`text-xs sm:text-sm px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideWordMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                          >
-                            {hideWordMeanings ? t('showMeaning') : t('hideMeaning')}
-                          </button>
-                        </div>
-
-                        <CardCarousel
-                          items={analysisResult.wordList}
-                          title={t('wordCardTitle')}
-                          icon="📌"
-                          renderItem={(word) => (
-                            <div className="text-center w-full max-w-sm px-2 py-1">
-                              <div className="flex items-center justify-center space-x-2 mb-1">
-                                <span className="font-bold text-xl text-slate-900">{word.word}</span>
-                                <span className="text-sm text-rose-600 font-semibold">[{word.reading}]</span>
+                      return (
+                        <>
+                          <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100">
+                            <div className="flex flex-wrap justify-between items-center mb-3 pb-2 border-b border-slate-100 gap-2">
+                              <div className="flex items-center space-x-2">
+                                <h3 className="text-sm font-bold text-slate-600 flex items-center gap-1.5">
+                                  <span>🎏</span> {t('noteTitle')}
+                                </h3>
                                 <button
-                                  onClick={() => toggleSpeech(word.word)}
-                                  className={`text-sm p-1 rounded transition cursor-pointer ${
-                                    speakingText === word.word
-                                      ? 'bg-rose-600 text-white font-bold border border-rose-700'
-                                      : 'text-slate-400 hover:text-amber-600'
+                                  onClick={() => toggleSpeech(inputText)}
+                                  className={`p-1.5 text-xs sm:text-sm font-bold rounded-md transition flex items-center justify-center cursor-pointer ${
+                                    speakingText === inputText
+                                      ? 'bg-rose-600 text-white hover:bg-rose-700 border border-rose-700'
+                                      : 'bg-amber-100 hover:bg-amber-200 text-amber-800'
                                   }`}
                                 >
-                                  {speakingText === word.word ? '⏹️' : '🔊'}
+                                  <span>{speakingText === inputText ? '⏹️' : '🔊'}</span>
                                 </button>
-                                {word.jlpt && <span className="text-xs bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-bold">{word.jlpt}</span>}
                               </div>
-                              <p className="text-xs sm:text-sm text-slate-600 mt-2">
-                                {t('partOfSpeech')}: <span className="font-semibold text-slate-800">{getLocalizedPOS(word.partOfSpeech, lang)}</span>
-                              </p>
-                              <p className="text-xs sm:text-sm mt-1.5">
-                                {t('meaning')}: {' '}
-                                <span className={hideWordMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'font-bold text-slate-800'}>
-                                  {getLocalizedText(word.meaning, lang)}
-                                </span>
-                              </p>
-                              <button
-                                onClick={() => handleAddCardToDeck(word)}
-                                className="mt-3 px-4 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-sm font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
-                              >
-                                {t('addWordBtn')}
-                              </button>
-                            </div>
-                          )}
-                        />
-                      </div>
-                    )}
+                              
+                              <div className="flex flex-wrap items-center space-x-2 text-xs sm:text-sm bg-slate-50 p-1.5 rounded-xl border border-slate-200 gap-y-1">
+                                <div className="flex items-center space-x-1">
+                                  <button
+                                    onClick={() => setFontSize(prev => Math.max(14, prev - 2))}
+                                    className="px-2 py-0.5 bg-white border rounded text-slate-700 font-bold hover:bg-slate-100 text-xs cursor-pointer"
+                                  >
+                                    A-
+                                  </button>
+                                  <span className="text-xs font-semibold text-slate-500 w-8 text-center">{fontSize}px</span>
+                                  <button
+                                    onClick={() => setFontSize(prev => Math.min(28, prev + 2))}
+                                    className="px-2 py-0.5 bg-white border rounded text-slate-700 font-bold hover:bg-slate-100 text-xs cursor-pointer"
+                                  >
+                                    A+
+                                  </button>
+                                </div>
 
-                    {analysisResult.kanjiList && analysisResult.kanjiList.length > 0 && (
-                      <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
-                        <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs sm:text-sm text-slate-600 font-semibold">{t('targetDeck')}</span>
-                            <select
-                              value={selectedDeckId}
-                              onChange={(e) => setSelectedDeckId(e.target.value)}
-                              className="text-xs sm:text-sm border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-rose-400 cursor-pointer"
+                                <div className="flex items-center space-x-1.5 border-l border-slate-200 pl-2">
+                                  <button
+                                    onClick={() => setReadingDisplayMode(readingDisplayMode === 'off' ? 'furigana' : 'off')}
+                                    className={`px-3 py-1 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer ${
+                                      readingDisplayMode !== 'off'
+                                        ? 'bg-rose-600 text-white hover:bg-rose-700' 
+                                        : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                                    }`}
+                                  >
+                                    {t('modeYomigana')} {readingDisplayMode !== 'off' ? 'On' : 'Off'}
+                                  </button>
+                                  <button
+                                    onClick={() => setShowTranslation(!showTranslation)}
+                                    className={`px-3 py-1 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer ${
+                                      showTranslation
+                                        ? 'bg-sky-600 text-white hover:bg-sky-700' 
+                                        : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                                    }`}
+                                  >
+                                    {t('modeTranslate')} {showTranslation ? 'On' : 'Off'}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div 
+                              style={{
+                                fontSize: `${fontSize}px`,
+                                fontFamily: 'sans-serif'
+                              }}
+                              className="note-content-area p-4 bg-[#FAF8F5] rounded-xl border border-amber-100 space-y-2.5"
                             >
-                              {decks.map(d => (
-                                <option key={d.id} value={d.id}>{d.name} ({(d.cards || []).length})</option>
-                              ))}
-                            </select>
+                              {analysisResult.rubySentences && analysisResult.rubySentences.length > 0 ? (
+                                analysisResult.rubySentences.map((rawSentence, sIdx) => {
+                                  const sentenceStr = typeof rawSentence === 'string' ? rawSentence : JSON.stringify(rawSentence);
+                                  const tokens = parseRubySentence(sentenceStr);
+
+                                  return (
+                                    <p key={sIdx} className="leading-relaxed">
+                                      {tokens.map((token, tIdx) => {
+                                        if (!token.reading) {
+                                          return <span key={tIdx}>{token.text}</span>;
+                                        }
+
+                                        if (readingDisplayMode === 'furigana' || readingDisplayMode === 'yomigana') {
+                                          return (
+                                            <ruby key={tIdx} className="inline-ruby mx-[1px]">
+                                              {token.text}
+                                              <rt className="text-rose-600 font-bold text-[0.65em]">{token.reading}</rt>
+                                            </ruby>
+                                          );
+                                        } else {
+                                          return <span key={tIdx}>{token.text}</span>;
+                                        }
+                                      })}
+                                    </p>
+                                  );
+                                })
+                              ) : (
+                                <p className="text-slate-400 text-xs sm:text-sm">No analyzed sentences found.</p>
+                              )}
+                              
+                              {showTranslation && analysisResult.translatedText && (
+                                <div className="mt-4 pt-3 border-t border-amber-200/50 text-sm sm:text-base font-bold text-slate-700">
+                                  {analysisResult.translatedText}
+                                </div>
+                              )}
+                            </div>
                           </div>
 
-                          <button
-                            onClick={() => setHideKanjiMeanings(!hideKanjiMeanings)}
-                            className={`text-xs sm:text-sm px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideKanjiMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                          >
-                            {hideKanjiMeanings ? t('showMeaning') : t('hideMeaning')}
-                          </button>
-                        </div>
+                          {/* 🌸 주요 단어 카드 */}
+                          {analysisResult.wordList && analysisResult.wordList.length > 0 && (
+                            <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
+                              <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs sm:text-sm text-slate-600 font-semibold">{t('targetDeck')}</span>
+                                  <select
+                                    value={selectedDeckId}
+                                    onChange={(e) => setSelectedDeckId(e.target.value)}
+                                    className="text-xs sm:text-sm border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-rose-400 cursor-pointer"
+                                  >
+                                    {decks.map(d => (
+                                      <option key={d.id} value={d.id}>{d.name} ({(d.cards || []).length})</option>
+                                    ))}
+                                  </select>
+                                </div>
 
-                        <CardCarousel
-                          items={analysisResult.kanjiList}
-                          title={t('kanjiCardTitle')}
-                          icon="🏮"
-                          renderItem={(k) => (
-                            <div className="text-center w-full max-w-sm px-2 py-1">
-                              <div className="flex justify-center items-center gap-1.5 mb-1">
-                                <span className="text-2xl font-bold text-slate-800">{k.kanji}</span>
                                 <button
-                                  onClick={() => toggleSpeech(k.kanji)}
-                                  className={`text-sm p-1 rounded transition cursor-pointer ${
-                                    speakingText === k.kanji
-                                      ? 'bg-rose-600 text-white font-bold border border-rose-700'
-                                      : 'text-slate-400 hover:text-amber-600'
-                                  }`}
+                                  onClick={() => setHideWordMeanings(!hideWordMeanings)}
+                                  className={`text-xs sm:text-sm px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideWordMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
                                 >
-                                  {speakingText === k.kanji ? '⏹️' : '🔊'}
+                                  {hideWordMeanings ? t('showMeaning') : t('hideMeaning')}
                                 </button>
                               </div>
-                              <span className="text-sm text-rose-600 font-bold block">{k.readings}</span>
-                              <span className="text-xs sm:text-sm block mt-1.5">
-                                {t('meaning')}: {' '}
-                                <span className={hideKanjiMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'font-semibold text-slate-800'}>
-                                  {getLocalizedText(k.meaning, lang)}
-                                </span>
-                              </span>
-                              <button
-                                onClick={() => handleAddKanjiToDeck(k)}
-                                className="mt-3 px-4 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-sm font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
-                              >
-                                {t('addWordBtn')}
-                              </button>
+
+                              <CardCarousel
+                                items={analysisResult.wordList}
+                                title={t('wordCardTitle')}
+                                icon="📌"
+                                renderItem={(word) => (
+                                  <div className="text-center w-full max-w-sm px-2 py-1">
+                                    <div className="flex items-center justify-center space-x-2 mb-1">
+                                      <span className="font-bold text-xl text-slate-900">{word.word}</span>
+                                      <span className="text-sm text-rose-600 font-semibold">[{word.reading}]</span>
+                                      <button
+                                        onClick={() => toggleSpeech(word.word)}
+                                        className={`text-sm p-1 rounded transition cursor-pointer ${
+                                          speakingText === word.word
+                                            ? 'bg-rose-600 text-white font-bold border border-rose-700'
+                                            : 'text-slate-400 hover:text-amber-600'
+                                        }`}
+                                      >
+                                        {speakingText === word.word ? '⏹️' : '🔊'}
+                                      </button>
+                                      {word.jlpt && <span className="text-xs bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-bold">{word.jlpt}</span>}
+                                    </div>
+                                    <p className="text-xs sm:text-sm text-slate-600 mt-2">
+                                      {t('partOfSpeech')}: <span className="font-semibold text-slate-800">{getLocalizedPOS(word.partOfSpeech, cardLang)}</span>
+                                    </p>
+                                    <p className="text-xs sm:text-sm mt-1.5">
+                                      {t('meaning')}: {' '}
+                                      <span className={hideWordMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'font-bold text-slate-800'}>
+                                        {getLocalizedText(word.meaning, cardLang)}
+                                      </span>
+                                    </p>
+                                    <button
+                                      onClick={() => handleAddCardToDeck(word, cardLang)}
+                                      className="mt-3 px-4 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-sm font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
+                                    >
+                                      {t('addWordBtn')}
+                                    </button>
+                                  </div>
+                                )}
+                              />
                             </div>
                           )}
-                        />
-                      </div>
-                    )}
 
-                    {analysisResult.grammarList && analysisResult.grammarList.length > 0 && (
-                      <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
-                        <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs sm:text-sm text-slate-600 font-semibold">{t('targetDeck')}</span>
-                            <select
-                              value={selectedDeckId}
-                              onChange={(e) => setSelectedDeckId(e.target.value)}
-                              className="text-xs sm:text-sm border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-rose-400 cursor-pointer"
-                            >
-                              {decks.map(d => (
-                                <option key={d.id} value={d.id}>{d.name} ({(d.cards || []).length})</option>
-                              ))}
-                            </select>
-                          </div>
+                          {/* 🌸 한자 정보 카드 */}
+                          {analysisResult.kanjiList && analysisResult.kanjiList.length > 0 && (
+                            <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
+                              <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs sm:text-sm text-slate-600 font-semibold">{t('targetDeck')}</span>
+                                  <select
+                                    value={selectedDeckId}
+                                    onChange={(e) => setSelectedDeckId(e.target.value)}
+                                    className="text-xs sm:text-sm border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-rose-400 cursor-pointer"
+                                  >
+                                    {decks.map(d => (
+                                      <option key={d.id} value={d.id}>{d.name} ({(d.cards || []).length})</option>
+                                    ))}
+                                  </select>
+                                </div>
 
-                          <button
-                            onClick={() => setHideGrammarMeanings(!hideGrammarMeanings)}
-                            className={`text-xs sm:text-sm px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideGrammarMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                          >
-                            {hideGrammarMeanings ? t('showMeaning') : t('hideMeaning')}
-                          </button>
-                        </div>
+                                <button
+                                  onClick={() => setHideKanjiMeanings(!hideKanjiMeanings)}
+                                  className={`text-xs sm:text-sm px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideKanjiMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                                >
+                                  {hideKanjiMeanings ? t('showMeaning') : t('hideMeaning')}
+                                </button>
+                              </div>
 
-                        <CardCarousel
-                          items={analysisResult.grammarList}
-                          title={t('grammarCardTitle')}
-                          icon="⛩️"
-                          renderItem={(g) => (
-                            <div className="text-center w-full max-w-md px-2 py-1">
-                              <span className="inline-block px-3 py-1 bg-rose-100 text-rose-800 font-bold text-sm rounded-md mb-2">
-                                {g.grammar}
-                              </span>
-                              <p className="text-xs sm:text-sm leading-relaxed font-medium mb-3">
-                                <span className={hideGrammarMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'text-slate-800'}>
-                                  {getLocalizedText(g.explanation, lang)}
-                                </span>
-                              </p>
-                              <button
-                                onClick={() => handleAddGrammarToDeck(g)}
-                                className="px-4 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-sm font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
-                              >
-                                {t('addWordBtn')}
-                              </button>
+                              <CardCarousel
+                                items={analysisResult.kanjiList}
+                                title={t('kanjiCardTitle')}
+                                icon="🏮"
+                                renderItem={(k) => (
+                                  <div className="text-center w-full max-w-sm px-2 py-1">
+                                    <div className="flex justify-center items-center gap-1.5 mb-1">
+                                      <span className="text-2xl font-bold text-slate-800">{k.kanji}</span>
+                                      <button
+                                        onClick={() => toggleSpeech(k.kanji)}
+                                        className={`text-sm p-1 rounded transition cursor-pointer ${
+                                          speakingText === k.kanji
+                                            ? 'bg-rose-600 text-white font-bold border border-rose-700'
+                                            : 'text-slate-400 hover:text-amber-600'
+                                        }`}
+                                      >
+                                        {speakingText === k.kanji ? '⏹️' : '🔊'}
+                                      </button>
+                                    </div>
+                                    <span className="text-sm text-rose-600 font-bold block">{k.readings}</span>
+                                    <span className="text-xs sm:text-sm block mt-1.5">
+                                      {t('meaning')}: {' '}
+                                      <span className={hideKanjiMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'font-semibold text-slate-800'}>
+                                        {getLocalizedText(k.meaning, cardLang)}
+                                      </span>
+                                    </span>
+                                    <button
+                                      onClick={() => handleAddKanjiToDeck(k, cardLang)}
+                                      className="mt-3 px-4 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-sm font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
+                                    >
+                                      {t('addWordBtn')}
+                                    </button>
+                                  </div>
+                                )}
+                              />
                             </div>
                           )}
-                        />
-                      </div>
-                    )}
+
+                          {/* 🌸 문법 구조 카드 */}
+                          {analysisResult.grammarList && analysisResult.grammarList.length > 0 && (
+                            <div className="bg-white p-5 rounded-2xl shadow-xs border border-rose-100 space-y-3">
+                              <div className="flex flex-wrap justify-between items-center gap-2 pb-2.5 border-b border-slate-100">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs sm:text-sm text-slate-600 font-semibold">{t('targetDeck')}</span>
+                                  <select
+                                    value={selectedDeckId}
+                                    onChange={(e) => setSelectedDeckId(e.target.value)}
+                                    className="text-xs sm:text-sm border border-slate-200 rounded-lg px-2.5 py-1 bg-slate-50 font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-rose-400 cursor-pointer"
+                                  >
+                                    {decks.map(d => (
+                                      <option key={d.id} value={d.id}>{d.name} ({(d.cards || []).length})</option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <button
+                                  onClick={() => setHideGrammarMeanings(!hideGrammarMeanings)}
+                                  className={`text-xs sm:text-sm px-3.5 py-1.5 rounded-xl font-bold transition cursor-pointer shadow-2xs ${hideGrammarMeanings ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+                                >
+                                  {hideGrammarMeanings ? t('showMeaning') : t('hideMeaning')}
+                                </button>
+                              </div>
+
+                              <CardCarousel
+                                items={analysisResult.grammarList}
+                                title={t('grammarCardTitle')}
+                                icon="⛩️"
+                                renderItem={(g) => (
+                                  <div className="text-center w-full max-w-md px-2 py-1">
+                                    <span className="inline-block px-3 py-1 bg-rose-100 text-rose-800 font-bold text-sm rounded-md mb-2">
+                                      {g.grammar}
+                                    </span>
+                                    <p className="text-xs sm:text-sm leading-relaxed font-medium mb-3">
+                                      <span className={hideGrammarMeanings ? 'bg-slate-800 text-slate-800 select-none rounded px-2' : 'text-slate-800'}>
+                                        {getLocalizedText(g.explanation, cardLang)}
+                                      </span>
+                                    </p>
+                                    <button
+                                      onClick={() => handleAddGrammarToDeck(g, cardLang)}
+                                      className="px-4 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-sm font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
+                                    >
+                                      {t('addWordBtn')}
+                                    </button>
+                                  </div>
+                                )}
+                              />
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

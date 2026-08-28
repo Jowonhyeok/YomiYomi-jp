@@ -1,9 +1,9 @@
 export type Lang = 'en' | 'ko' | 'zh-CN' | 'zh-TW' | 'ja';
 
-// 💥 helpers.ts에서 사용하는 다국어 텍스트 타입 추가
+// 💥 helpers.ts에서 사용하는 다국어 텍스트 타입
 export type MultilingualText = Record<string, string> | string;
 
-// 💥 helpers.ts에서 사용하는 요미가나 파싱 토큰 타입 추가
+// 💥 helpers.ts에서 사용하는 요미가나 파싱 토큰 타입
 export interface RubyToken {
   text: string;
   reading?: string;
@@ -29,7 +29,7 @@ export interface GrammarInfo {
   explanation: MultilingualText;
 }
 
-// 에러의 원인이었던 translatedText가 포함된 분석 결과 인터페이스
+// 🌸 resultLang 필드를 추가하여 분석 당시 언어를 고정 저장하도록 보완
 export interface AnalysisResult {
   isJapanese: boolean;
   translatedText?: string; 
@@ -37,6 +37,7 @@ export interface AnalysisResult {
   kanjiList?: KanjiInfo[];
   wordList?: WordInfo[];
   grammarList?: GrammarInfo[];
+  resultLang?: Lang; // 🌸 추가: 앱 언어를 변경해도 분석 카드의 언어가 변하지 않도록 기록
 }
 
 export interface Deck {
