@@ -129,39 +129,102 @@ export async function onRequestPost(context) {
     else if (targetLang === "ko") langGuide = "Korean";
     else if (targetLang === "ja") langGuide = "Japanese";
 
-    let promptText = `Task: Analyze Japanese input for learners. Output JSON ONLY.
+    const parts = [];
+    if (text) parts.push({ text: `Input: "${text}"` });
+    if (imageBase64) {
+      parts.push({ inlineData: { mimeType: imageBase64.mimeType, data: imageBase64.data } });
+      parts.push({ text: "Instruction: OCR and analyze Japanese text in image." });
+    }
+
+    // 🌸 System Instruction & Response Schema 적용 페이로드
+    const payload = {
+      systemInstruction: {
+        parts: [{
+          text: `Task: Analyze Japanese input for language learners.
 Target Language: "${targetLang}" (${langGuide})
 
 Rules:
-- "translatedText": Full translation string.
-- "partOfSpeech": Exactly one from ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
-- "meaning" & "explanation": Multi-lang map with keys ["ko","en","zh-CN","zh-TW","ja"].
-
-JSON Format:
-{
-  "isJapanese": true,
-  "translatedText": "string",
-  "rubySentences": ["<ruby>私<rt>わたし</rt></ruby>は..."],
-  "kanjiList": [{"kanji": "私", "readings": "わたし", "meaning": {"ko": "나", "en": "I"}}],
-  "wordList": [{"word": "学生", "reading": "がくせい", "partOfSpeech": "noun", "meaning": {"ko": "학생", "en": "student"}, "jlpt": "N5"}],
-  "grammarList": [{"grammar": "です", "explanation": {"ko": "~입니다", "en": "is/am/are"}}]
-}
-
-`;
-
-    if (text) promptText += `Input: "${text}"\n`;
-    if (imageBase64) promptText += `Instruction: OCR and analyze Japanese text in image.\n`;
-
-    const parts = [{ text: promptText }];
-    if (imageBase64) {
-      parts.push({ inlineData: { mimeType: imageBase64.mimeType, data: imageBase64.data } });
-    }
-
-    // Direct REST API 호출 페이로드
-    const payload = {
+1. "translatedText": Full text translation in target language (string).
+2. "partOfSpeech": Standard code strictly from ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
+3. "meaning" & "explanation": Multilingual map with keys ["ko","en","zh-CN","zh-TW","ja"].`
+        }]
+      },
       contents: [{ role: 'user', parts: parts }],
       generationConfig: {
         responseMimeType: 'application/json',
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            isJapanese: { type: "BOOLEAN" },
+            translatedText: { type: "STRING" },
+            rubySentences: { type: "ARRAY", items: { type: "STRING" } },
+            kanjiList: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  kanji: { type: "STRING" },
+                  readings: { type: "STRING" },
+                  meaning: {
+                    type: "OBJECT",
+                    properties: {
+                      ko: { type: "STRING" },
+                      en: { type: "STRING" },
+                      "zh-CN": { type: "STRING" },
+                      "zh-TW": { type: "STRING" },
+                      ja: { type: "STRING" }
+                    }
+                  }
+                },
+                required: ["kanji", "readings", "meaning"]
+              }
+            },
+            wordList: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  word: { type: "STRING" },
+                  reading: { type: "STRING" },
+                  partOfSpeech: { type: "STRING" },
+                  meaning: {
+                    type: "OBJECT",
+                    properties: {
+                      ko: { type: "STRING" },
+                      en: { type: "STRING" },
+                      "zh-CN": { type: "STRING" },
+                      "zh-TW": { type: "STRING" },
+                      ja: { type: "STRING" }
+                    }
+                  },
+                  jlpt: { type: "STRING" }
+                },
+                required: ["word", "reading", "partOfSpeech", "meaning"]
+              }
+            },
+            grammarList: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  grammar: { type: "STRING" },
+                  explanation: {
+                    type: "OBJECT",
+                    properties: {
+                      ko: { type: "STRING" },
+                      en: { type: "STRING" },
+                      "zh-CN": { type: "STRING" },
+                      "zh-TW": { type: "STRING" },
+                      ja: { type: "STRING" }
+                    }
+                  }
+                },
+                required: ["grammar", "explanation"]
+              }
+            }
+          },
+          required: ["isJapanese", "translatedText", "rubySentences", "wordList"]
+        },
         temperature: 0.1,
         maxOutputTokens: 2048
       }
@@ -169,10 +232,9 @@ JSON Format:
 
     const apiResult = await fetchGeminiDirect(apiKey, payload);
     const rawText = apiResult.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    const cleanedJsonText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    const parsedData = JSON.parse(cleanedJsonText);
+    const parsedData = JSON.parse(rawText);
 
-    // Firestore 업데이트 비동기(Non-blocking) 처리
+    // Firestore 비동기 처리
     context.waitUntil(
       fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
         method: 'PATCH',
