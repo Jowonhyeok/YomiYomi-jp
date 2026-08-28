@@ -24,7 +24,7 @@ interface DeckState {
 }
 
 export const useDeckStore = create<DeckState>((set) => ({
-  decks: [{ id: 'default', name: '기본 암기장', cards: [], createdAt: new Date().toISOString() }],
+  decks: [{ id: 'default', name: 'Default Deck', cards: [], createdAt: new Date().toISOString() }],
   selectedDeckId: 'default',
   searchKeyword: '',
   quizSelectedDeckIds: [],
