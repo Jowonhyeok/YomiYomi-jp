@@ -519,8 +519,8 @@ export default function App() {
     });
   };
 
-  // 🌸 레몬스퀴지 결제 모달 호출 함수 (전체 URL 및 UUID 지원)
-  const handleLemonSqueezyPayment = (planName: string, variantTarget: string) => {
+  // 🌸 레몬스퀴지 공식 임베드 결제 모달 호출 함수
+  const handleLemonSqueezyPayment = (planName: string, checkoutUrlRaw: string) => {
     if (!agreePayPolicy) {
       showAlert(lang === 'ko' ? "결제 약관 및 이용 정책에 동의해 주세요." : "Please agree to the payment policy terms.");
       return;
@@ -534,14 +534,15 @@ export default function App() {
 
     sessionStorage.setItem('pendingPlanName', planName);
 
-    let checkoutUrl = '';
-    if (variantTarget.startsWith('http://') || variantTarget.startsWith('https://')) {
-      checkoutUrl = `${variantTarget}?embed=1&checkout[email]=${encodeURIComponent(currentUser.email || '')}`;
-    } else {
-      checkoutUrl = `https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/${variantTarget}?embed=1&checkout[email]=${encodeURIComponent(currentUser.email || '')}`;
+    let checkoutUrl = checkoutUrlRaw.trim();
+    if (!checkoutUrl.includes('embed=1')) {
+      const hasQuery = checkoutUrl.includes('?');
+      checkoutUrl += `${hasQuery ? '&' : '?'}embed=1`;
     }
 
-    if (window.LemonSqueezy) {
+    checkoutUrl += `&checkout[email]=${encodeURIComponent(currentUser.email || '')}`;
+
+    if (window.LemonSqueezy && window.LemonSqueezy.Url) {
       window.LemonSqueezy.Url.Open(checkoutUrl);
     } else {
       window.open(checkoutUrl, '_blank');
@@ -2088,7 +2089,7 @@ export default function App() {
         </p>
       </footer>
 
-      {/* 🌸 요금제 모달 (레몬스퀴지 체크아웃 버튼 연동) 🌸 */}
+      {/* 🌸 요금제 모달 (공식 레몬스퀴지 임베드 링크 적용) 🌸 */}
       {isPricingModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-rose-100 relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
@@ -2165,7 +2166,10 @@ export default function App() {
                     </div>
                     <button
                       disabled={!agreePayPolicy}
-                      onClick={() => handleLemonSqueezyPayment(payModalI18n.pass3m, import.meta.env.VITE_LEMON_VARIANT_3MONTH || 'c190392a-86b8-4828-a4d6-dd88e54d8e53')}
+                      onClick={() => handleLemonSqueezyPayment(
+                        payModalI18n.pass3m, 
+                        import.meta.env.VITE_LEMON_VARIANT_3MONTH || 'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/c190392a-86b8-4828-a4d6-dd88e54d8e53'
+                      )}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
                       {payModalI18n.buyBtn}
@@ -2188,7 +2192,10 @@ export default function App() {
                     </div>
                     <button
                       disabled={!agreePayPolicy}
-                      onClick={() => handleLemonSqueezyPayment(payModalI18n.pass1y, import.meta.env.VITE_LEMON_VARIANT_1YEAR || '3302e962-c15b-42b1-afda-f4272bd3a424')}
+                      onClick={() => handleLemonSqueezyPayment(
+                        payModalI18n.pass1y, 
+                        import.meta.env.VITE_LEMON_VARIANT_1YEAR || 'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/3302e962-c15b-42b1-afda-f4272bd3a424'
+                      )}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
                       {payModalI18n.buyBtn}
@@ -2211,7 +2218,10 @@ export default function App() {
                     </div>
                     <button
                       disabled={!agreePayPolicy}
-                      onClick={() => handleLemonSqueezyPayment(payModalI18n.passLife, import.meta.env.VITE_LEMON_VARIANT_LIFETIME || 'c74e6951-6422-4bfe-a38d-ed18e989371d')}
+                      onClick={() => handleLemonSqueezyPayment(
+                        payModalI18n.passLife, 
+                        import.meta.env.VITE_LEMON_VARIANT_LIFETIME || 'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/c74e6951-6422-4bfe-a38d-ed18e989371d'
+                      )}
                       className="mt-4 w-full py-2 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer"
                     >
                       {payModalI18n.buyBtn}
