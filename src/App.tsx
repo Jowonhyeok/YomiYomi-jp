@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef} from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   signInWithEmailAndPassword, 
@@ -70,7 +70,6 @@ const LANG_OPTIONS: { code: Lang; flagUrl: string; label: string }[] = [
   { code: 'ja', flagUrl: 'https://flagcdn.com/jp.svg', label: '日本語' },
 ];
 
-// 🌸 Fingerprint ID 메모리 캐싱 변수 (매 호출 시 브라우저 연산 병목 제거)
 let cachedDeviceId: string | null = null;
 
 async function getDeviceId(): Promise<string | null> {
@@ -103,12 +102,10 @@ export default function App() {
   const [hideKanjiMeanings, setHideKanjiMeanings] = useState(false);
   const [hideGrammarMeanings, setHideGrammarMeanings] = useState(false);
 
-  // 🌸 앱 로드 시 미리 DeviceId를 비동기로 받아두어 캐싱 처리
   useEffect(() => {
     getDeviceId();
   }, []);
 
-  // 🌸 다국어 번역 함수
   const t = (key: string) => DICT[lang]?.[key] || DICT['en']?.[key] || DICT['ko']?.[key] || key;
 
   useEffect(() => {
@@ -577,7 +574,6 @@ export default function App() {
     }
   };
 
-  // 🌸 이미지 압축 캔버스 변환 성능 최적화
   const processImageFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
       showAlert(t('imageOnlyAlert'));
@@ -609,7 +605,7 @@ export default function App() {
           ctx.drawImage(img, 0, 0, width, height);
           
           const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-          const dataUrl = canvas.toDataURL(mimeType, 0.75); // Quality 0.75로 전송 크기 감소
+          const dataUrl = canvas.toDataURL(mimeType, 0.75);
           const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
 
           setSelectedImage({
@@ -670,7 +666,6 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // 🌸 분석 실행 핸들러 (지연 원인 즉시 제거 및 최적화)
   const handleAnalyze = async () => {
     if (!currentUser) {
       showAlert(t('loginGateMsg'));
@@ -688,8 +683,6 @@ export default function App() {
 
     try {
       const imagePayload = selectedImage ? { mimeType: selectedImage.mimeType, data: selectedImage.data } : undefined;
-      
-      // 캐싱된 Device ID 빠르게 동기 취득
       const deviceId = cachedDeviceId || await getDeviceId();
 
       const result = await analyzeJapanese(inputText, lang, imagePayload, deviceId);
@@ -723,13 +716,13 @@ export default function App() {
       }
     } finally {
       setIsAnalyzing(false);
-      // 쿨다운 시간을 1초로 단축하여 빠른 재시도 보장
       setTimeout(() => {
         setIsCoolingDown(false);
       }, 1000);
     }
   };
 
+  // 🌸 단어 추가 핸들러 (단일 문자열 처리)
   const handleAddCardToDeck = (word: WordInfo) => {
     if (!word) return;
 
@@ -741,7 +734,7 @@ export default function App() {
       word: String(word.word || '').trim(),
       reading: String(word.reading || '').trim(),
       partOfSpeech: String(word.partOfSpeech || '단어').trim(),
-      meaning: word.meaning || '',
+      meaning: getLocalizedText(word.meaning, lang), // 문자열 안전 추출
       jlpt: String(word.jlpt || '').trim()
     };
 
@@ -767,22 +760,24 @@ export default function App() {
     }
   };
 
+  // 🌸 한자 추가 핸들러 (단일 문자열 처리)
   const handleAddKanjiToDeck = (k: KanjiInfo) => {
     handleAddCardToDeck({
       word: k.kanji,
       reading: k.readings,
       partOfSpeech: '한자',
-      meaning: k.meaning,
+      meaning: getLocalizedText(k.meaning, lang),
       jlpt: '한자'
     });
   };
 
+  // 🌸 문법 추가 핸들러 (단일 문자열 처리)
   const handleAddGrammarToDeck = (g: GrammarInfo) => {
     handleAddCardToDeck({
       word: g.grammar,
       reading: '문법',
       partOfSpeech: '문법',
-      meaning: g.explanation,
+      meaning: getLocalizedText(g.explanation, lang),
       jlpt: '문법'
     });
   };
@@ -977,13 +972,14 @@ export default function App() {
     setupQuizQuestion(shuffledCards, 0, 0);
   };
 
+  // 🌸 퀴즈 문제 세팅 (문자열 방어 로직 반영)
   const setupQuizQuestion = (cards: WordInfo[], index: number, score: number) => {
     const currentCard = cards[index];
     const currentCardMeaning = getLocalizedText(currentCard.meaning, lang);
     const otherMeanings = Array.from(new Set(
       decks.flatMap(d => d.cards || [])
         .map(c => getLocalizedText(c.meaning, lang))
-        .filter(m => m !== currentCardMeaning)
+        .filter(m => m && m !== currentCardMeaning)
     ));
 
     while (otherMeanings.length < 2) {
@@ -1024,6 +1020,7 @@ export default function App() {
 
   const currentActiveDeck = decks.find(d => String(d.id) === String(selectedDeckId)) || decks[0] || DEFAULT_DECK_DATA;
 
+  // 🌸 검색 필터링 방어 로직 반영
   const filteredCards = (currentActiveDeck.cards || []).filter(c => 
     (c.word || '').toLowerCase().includes(searchKeyword.toLowerCase()) ||
     (c.reading || '').toLowerCase().includes(searchKeyword.toLowerCase()) ||
