@@ -1,5 +1,6 @@
-// 구글 Gemini REST API 다이렉트 호출 함수
+// Google Gemini REST API 호출 함수
 async function fetchGeminiDirect(apiKey, payload) {
+  // 🌸 Gemini 3.5 Flash-Lite 정식 모델 ID 적용
   const targetModel = 'gemini-3.5-flash-lite';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
 
@@ -15,13 +16,15 @@ async function fetchGeminiDirect(apiKey, payload) {
     try {
       return JSON.parse(resText);
     } catch (e) {
-      throw new Error(`API_RESPONSE_NOT_JSON: ${resText}`);
+      throw new Error(`API_RESPONSE_NOT_JSON: ${resText.slice(0, 100)}`);
     }
   }
 
+  // Google API 통신 에러 발생 시 500 내뱉지 않도록 에러 포맷팅
   throw new Error(`GEMINI_API_ERROR_${response.status}: ${resText}`);
 }
 
+// AI 응답 텍스트에서 마크다운 제거 후 순수 JSON 추출
 function extractCleanJson(rawText) {
   if (!rawText || typeof rawText !== 'string') return '{}';
   
@@ -37,18 +40,13 @@ function extractCleanJson(rawText) {
   return cleaned;
 }
 
-// 🌸 1. POST 요청 처리 핸들러 (이름 필수: onRequestPost)
 export async function onRequestPost(context) {
   const { request, env } = context;
 
   const firebaseApiKey = env.VITE_FIREBASE_API_KEY || env.FIREBASE_API_KEY;
-  if (!firebaseApiKey) {
-    return new Response(JSON.stringify({ error: 'CONFIG_ERROR', message: 'VITE_FIREBASE_API_KEY 미설정' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
+  const apiKey = env.GEMINI_API_KEY || '';
 
+  // 1. Auth 토큰 검증
   const authHeader = request.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'UNAUTHORIZED', message: '로그인이 필요합니다.' }), {
@@ -67,17 +65,7 @@ export async function onRequestPost(context) {
     });
 
     if (!verifyRes.ok) {
-      const errResText = await verifyRes.text();
-      return new Response(JSON.stringify({ error: 'INVALID_TOKEN', message: `인증 실패: ${errResText}` }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const verifyData = await verifyRes.json();
-    const uid = verifyData.users?.[0]?.localId;
-    if (!uid) {
-      return new Response(JSON.stringify({ error: 'INVALID_TOKEN', message: '사용자 UID 없음' }), {
+      return new Response(JSON.stringify({ error: 'INVALID_TOKEN', message: '인증 세션이 만료되었습니다.' }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -89,25 +77,10 @@ export async function onRequestPost(context) {
     });
   }
 
+  // 2. 본문 분석 실행
   try {
     const body = await request.json().catch(() => ({}));
     const { text = '', targetLang = 'en', imageBase64 = null } = body;
-    const MAX_INPUT_TEXT = 1500;
-
-    if (text && text.length > MAX_INPUT_TEXT) {
-      return new Response(JSON.stringify({ error: 'TEXT_TOO_LONG', message: '텍스트 길이 1,500자 초과' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    const apiKey = env.GEMINI_API_KEY || '';
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'CONFIG_ERROR', message: 'GEMINI_API_KEY 미설정' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
 
     let langGuide = "English";
     if (targetLang === "zh-CN") langGuide = "Simplified Chinese";
@@ -132,13 +105,12 @@ export async function onRequestPost(context) {
 Target Language for ALL Meanings & Explanations: "${langGuide}" (${targetLang})
 
 STRICT OUTPUT RULES:
-1. Output MUST be valid JSON only without markdown.
+1. Output MUST be valid JSON only without markdown formatting.
 2. "meaning" and "explanation" MUST BE A SINGLE STRING in "${langGuide}" ONLY.
 3. "rubySentences": Convert Japanese kanji using <ruby>漢字<rt>かんじ</rt></ruby> tags.
 4. "wordList": Extract MAX 10 key words.
 5. "kanjiList": Extract MAX 8 key kanji.
 6. "grammarList": Extract MAX 5 key grammar structures.
-7. "partOfSpeech": MUST be strictly one from: ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
 
 JSON Schema:
 {
@@ -163,11 +135,12 @@ JSON Schema:
     const rawText = apiResult.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     
     const jsonString = extractCleanJson(rawText);
+    
     let parsedData = {};
     try {
       parsedData = JSON.parse(jsonString);
-    } catch (parseError) {
-      return new Response(JSON.stringify({ error: 'PARSE_ERROR', message: 'JSON 파싱 실패' }), {
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'PARSE_ERROR', message: 'AI 응답 결과 JSON 파싱에 실패했습니다.', rawText }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -182,14 +155,13 @@ JSON Schema:
     });
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: 'SERVER_EXECUTION_ERROR', message: err.message }), {
+    return new Response(JSON.stringify({ error: 'ANALYSIS_FAILED', message: err.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
   }
 }
 
-// 🌸 2. Preflight OPTIONS 허용 핸들러 (405 방지 필수)
 export async function onRequestOptions() {
   return new Response(null, {
     status: 204,
