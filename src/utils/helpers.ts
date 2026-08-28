@@ -153,25 +153,29 @@ export function parseRubySentence(sentenceStr: string): RubyToken[] {
   return tokens.length > 0 ? tokens : [{ text: sentenceStr }];
 }
 
-export async function fetchWithRetry(url: string, options: RequestInit, retries = 2, backoff = 3000): Promise<Response> {
+// 🌸 1분 무한 대기 지연의 핵심 원인이었던 재시도(Retry) 로직 최적화 🌸
+// (재시도는 최대 1번만, 대기 시간은 3000ms -> 500ms 로 확 줄임)
+export async function fetchWithRetry(url: string, options: RequestInit, retries = 1, backoff = 500): Promise<Response> {
   try {
     const response = await fetch(url, options);
 
+    // 인증/결제/한도 에러는 바로 던짐
     if (response.status === 401 || response.status === 429 || response.status === 400) {
       return response;
     }
 
+    // 서버 내부(500)나 과부하(503) 시에만 짧게 1번 재시도
     if ((response.status === 503 || response.status === 500) && retries > 0) {
-      const jitter = Math.random() * 1000;
+      const jitter = Math.random() * 200; // 지터도 200ms로 최소화
       await new Promise(resolve => setTimeout(resolve, backoff + jitter));
-      return fetchWithRetry(url, options, retries - 1, backoff * 2);
+      return fetchWithRetry(url, options, retries - 1, backoff); // backoff 증폭(x2) 삭제
     }
     return response;
   } catch (err) {
     if (retries > 0) {
-      const jitter = Math.random() * 1000;
+      const jitter = Math.random() * 200;
       await new Promise(resolve => setTimeout(resolve, backoff + jitter));
-      return fetchWithRetry(url, options, retries - 1, backoff * 2);
+      return fetchWithRetry(url, options, retries - 1, backoff);
     }
     throw err;
   }

@@ -1,4 +1,4 @@
-// 구글 Gemini REST API 다이렉트 호출 함수 (gemini-3.5-flash-lite 적용)
+// 구글 Gemini REST API 다이렉트 호출 함수 (gemini-3.5-flash-lite 정식 적용)
 async function fetchGeminiDirect(apiKey, payload) {
   const targetModel = 'gemini-3.5-flash-lite';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
@@ -19,8 +19,34 @@ async function fetchGeminiDirect(apiKey, payload) {
     }
   }
 
-  // 400, 403, 404 등 오류 발생 시 지연 없이 원인 즉시 반환
   throw new Error(`GEMINI_API_ERROR_${response.status}: ${resText}`);
+}
+
+// JSON 안심 파싱 유틸리티 (500 파싱 에러 방지용 정규식 강화)
+function extractCleanJson(rawText) {
+  if (!rawText || typeof rawText !== 'string') return '{}';
+  
+  // 마크다운 백틱 및 앞뒤 공백 완전 제거
+  let cleaned = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+  
+  // JSON 시작({)과 끝(})을 찾아 불필요한 인간 친화적 텍스트(Here is the result 등) 도려내기
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  } else {
+    // 배열 형태([])로 응답이 올 경우에 대비
+    const firstBracket = cleaned.indexOf('[');
+    const lastBracket = cleaned.lastIndexOf(']');
+    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket >= firstBracket) {
+      cleaned = cleaned.substring(firstBracket, lastBracket + 1);
+    } else {
+       return '{}'; // 파싱 불가능한 텍스트일 경우 빈 객체 반환
+    }
+  }
+  
+  return cleaned;
 }
 
 export async function onRequestPost(context) {
@@ -37,7 +63,6 @@ export async function onRequestPost(context) {
 
   const idToken = authHeader.split('Bearer ')[1];
   const firebaseApiKey = env.VITE_FIREBASE_API_KEY;
-  const projectId = env.VITE_FIREBASE_PROJECT_ID || 'yomiyomi-jp';
 
   let uid = null;
 
@@ -103,12 +128,13 @@ export async function onRequestPost(context) {
 Target Language for All Meanings & Explanations: "${langGuide}" (${targetLang})
 
 STRICT OUTPUT RULES:
-1. "rubySentences" MUST NOT be empty. Convert every Japanese sentence using <ruby>漢字<rt>かんじ</rt></ruby> tags.
-2. "wordList", "kanjiList", and "grammarList" MUST contain analyzed components.
-3. DO NOT output multilingual maps. Provide all "meaning" and "explanation" fields ONLY as a SINGLE STRING in ${langGuide}.
-4. "partOfSpeech" MUST be strictly one from: ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
+1. Output MUST be valid JSON only. Do not wrap in markdown or add explanations.
+2. "rubySentences" MUST NOT be empty. Convert every Japanese sentence using <ruby>漢字<rt>かんじ</rt></ruby> tags.
+3. "wordList", "kanjiList", and "grammarList" MUST contain analyzed components.
+4. DO NOT output multilingual maps. Provide all "meaning" and "explanation" fields ONLY as a SINGLE STRING in ${langGuide}.
+5. "partOfSpeech" MUST be strictly one from: ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
 
-JSON Schema Example:
+JSON Schema:
 {
   "isJapanese": true,
   "translatedText": "Full text translation in ${langGuide}",
@@ -142,40 +168,24 @@ JSON Schema Example:
       },
       contents: [{ role: 'user', parts: parts }],
       generationConfig: {
-        responseMimeType: 'application/json',
+        responseMimeType: 'application/json', // 강제 JSON 규격 요구
         temperature: 0.1,
         maxOutputTokens: 2000
       }
     };
 
-    // 🌸 초고속 Gemini 호출
+    // Gemini API 호출
     const apiResult = await fetchGeminiDirect(apiKey, payload);
     const rawText = apiResult.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     
+    // 🌸 안전한 JSON 추출 (여기서 에러가 나지 않도록 try-catch 보강)
+    const jsonString = extractCleanJson(rawText);
     let parsedData = {};
     try {
-      let cleanedJsonText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-      
-      const firstObj = cleanedJsonText.indexOf('{');
-      const firstArr = cleanedJsonText.indexOf('[');
-      
-      let startPos = -1;
-      if (firstObj !== -1 && firstArr !== -1) startPos = Math.min(firstObj, firstArr);
-      else if (firstObj !== -1) startPos = firstObj;
-      else if (firstArr !== -1) startPos = firstArr;
-
-      const lastObj = cleanedJsonText.lastIndexOf('}');
-      const lastArr = cleanedJsonText.lastIndexOf(']');
-      const endPos = Math.max(lastObj, lastArr);
-
-      if (startPos !== -1 && endPos !== -1 && endPos > startPos) {
-        cleanedJsonText = cleanedJsonText.substring(startPos, endPos + 1);
-      }
-
-      parsedData = JSON.parse(cleanedJsonText);
-    } catch (pErr) {
-      console.error('[Gemini Raw Content Parse Failed]:', rawText);
-      throw new Error(`FAILED_TO_PARSE_GEMINI_RESPONSE: ${rawText.slice(0, 100)}`);
+      parsedData = JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error('[Gemini Final JSON Parse Failed]:', jsonString);
+      throw new Error("FAILED_TO_PARSE_CLEANED_JSON");
     }
 
     return new Response(JSON.stringify(parsedData), {
