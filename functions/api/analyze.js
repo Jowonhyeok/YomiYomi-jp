@@ -95,7 +95,7 @@ export async function onRequestPost(context) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { text, targetLang = 'en', imageBase64, deviceId } = body;
+    const { text = '', targetLang = 'en', imageBase64 = null, deviceId = null } = body;
     const MAX_INPUT_TEXT = 2500;
 
     if (text && text.length > MAX_INPUT_TEXT) {
@@ -121,9 +121,11 @@ export async function onRequestPost(context) {
       });
     }
 
-    // 🛡️ 2. 기기 핑거프린트(deviceId) 기준 검증 (탈퇴 후 재가입 방지)
+    // 🛡️ 2. 기기 핑거프린트(deviceId) 기준 검증 (deviceId가 유효한 문자열일 때만 실행)
     let deviceUsageCount = 0;
-    if (deviceId && !isSubscribed) {
+    const isValidDeviceId = deviceId && typeof deviceId === 'string' && deviceId.trim().length > 0;
+
+    if (isValidDeviceId && !isSubscribed) {
       try {
         const deviceDocRes = await fetch(
           `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/devices/${deviceId}_${today}`,
@@ -159,10 +161,21 @@ export async function onRequestPost(context) {
     else if (targetLang === "ja") langGuide = "Japanese";
 
     const parts = [];
-    if (text) parts.push({ text: `Input: "${text}"` });
-    if (imageBase64) {
+    if (text && typeof text === 'string' && text.trim().length > 0) {
+      parts.push({ text: `Input: "${text}"` });
+    }
+    
+    // 🛡️ 이미지 데이터 검증 보완
+    if (imageBase64 && imageBase64.mimeType && imageBase64.data) {
       parts.push({ inlineData: { mimeType: imageBase64.mimeType, data: imageBase64.data } });
       parts.push({ text: "Instruction: OCR and analyze Japanese text in image." });
+    }
+
+    if (parts.length === 0) {
+      return new Response(JSON.stringify({ error: 'EMPTY_INPUT', message: '분석할 텍스트나 이미지가 없습니다.' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     const payload = {
@@ -199,24 +212,26 @@ Schema Rules:
 
     // Firestore 비동기 처리 (유저 카운트 및 기기 카운트 동시 업데이트)
     if (context.waitUntil) {
-      context.waitUntil(
-        Promise.all([
-          // 유저 일일 카운트 업데이트
-          fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
-            method: 'PATCH',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${idToken}` 
-            },
-            body: JSON.stringify({
-              fields: {
-                dailyAnalyzeCount: { integerValue: String(dailyCount + 1) },
-                lastAnalyzeDate: { stringValue: today }
-              }
-            })
-          }),
-          // 기기(DeviceId) 카운트 업데이트
-          deviceId ? fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/devices/${deviceId}_${today}`, {
+      const updates = [
+        // 유저 일일 카운트 업데이트
+        fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
+          method: 'PATCH',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}` 
+          },
+          body: JSON.stringify({
+            fields: {
+              dailyAnalyzeCount: { integerValue: String(dailyCount + 1) },
+              lastAnalyzeDate: { stringValue: today }
+            }
+          })
+        })
+      ];
+
+      if (isValidDeviceId) {
+        updates.push(
+          fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/devices/${deviceId}_${today}`, {
             method: 'PATCH',
             headers: { 
               'Content-Type': 'application/json',
@@ -227,8 +242,12 @@ Schema Rules:
                 count: { integerValue: String(deviceUsageCount + 1) }
               }
             })
-          }) : Promise.resolve()
-        ]).catch(err => console.error('Firestore Async Update Warning:', err))
+          })
+        );
+      }
+
+      context.waitUntil(
+        Promise.all(updates).catch(err => console.error('Firestore Async Update Warning:', err))
       );
     }
 
