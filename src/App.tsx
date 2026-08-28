@@ -1086,28 +1086,28 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-slate-800 font-sans border-t-4 border-rose-600 relative pb-20 flex flex-col justify-between">
       <div>
-        {/* 🌸 헤더 영역 (로고 중앙 정렬) 🌸 */}
-        <header className="bg-white border-b border-rose-100 shadow-2xs sticky top-0 z-40 h-14">
-          <div className="max-w-7xl mx-auto px-3 sm:px-4 h-full grid grid-cols-3 items-center">
+        {/* 🌸 헤더 영역 (높이 및 패딩 확장으로 뭉개짐 방지) 🌸 */}
+        <header className="bg-white border-b border-rose-100 shadow-2xs sticky top-0 z-40 min-h-16 py-2">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 h-full grid grid-cols-3 items-center gap-2">
             
             {/* 좌측: 탭 메뉴 */}
             <div className="flex items-center space-x-2 justify-start">
-              <div className="hidden lg:flex space-x-1 bg-slate-100 p-0.5 rounded-lg">
+              <div className="hidden lg:flex space-x-1 bg-slate-100 p-1 rounded-xl shrink-0">
                 <button
                   onClick={() => setActiveTab('analyze')}
-                  className={`px-3.5 py-1.5 rounded-md text-sm font-bold transition cursor-pointer ${activeTab === 'analyze' ? 'bg-white text-rose-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
+                  className={`px-3.5 py-1.5 rounded-lg text-sm font-bold transition cursor-pointer whitespace-nowrap ${activeTab === 'analyze' ? 'bg-white text-rose-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
                 >
                   {t('analyzeTab')}
                 </button>
                 <button
                   onClick={() => setActiveTab('decks')}
-                  className={`px-3.5 py-1.5 rounded-md text-sm font-bold transition cursor-pointer ${activeTab === 'decks' ? 'bg-white text-rose-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
+                  className={`px-3.5 py-1.5 rounded-lg text-sm font-bold transition cursor-pointer whitespace-nowrap ${activeTab === 'decks' ? 'bg-white text-rose-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
                 >
                   {t('decksTab')}
                 </button>
                 <button
                   onClick={() => setActiveTab('quiz')}
-                  className={`px-3.5 py-1.5 rounded-md text-sm font-bold transition cursor-pointer ${activeTab === 'quiz' ? 'bg-white text-rose-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
+                  className={`px-3.5 py-1.5 rounded-lg text-sm font-bold transition cursor-pointer whitespace-nowrap ${activeTab === 'quiz' ? 'bg-white text-rose-600 shadow-2xs' : 'text-slate-600 hover:text-slate-900'}`}
                 >
                   {t('quizTab')}
                 </button>
@@ -1118,13 +1118,13 @@ export default function App() {
             <div className="flex items-center justify-center">
               <button 
                 onClick={() => setActiveTab('analyze')}
-                className="flex items-center space-x-1.5 sm:space-x-2 focus:outline-none group cursor-pointer"
+                className="flex items-center space-x-1.5 sm:space-x-2 focus:outline-none group cursor-pointer shrink-0"
               >
                 <span className="text-xl sm:text-2xl group-hover:scale-110 transition select-none">🌸</span>
                 <h1 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 group-hover:text-rose-600 transition flex items-center gap-1.5 app-logo-text whitespace-nowrap">
                   <span>YomiYomi</span>
                   {currentUser?.isSubscribed && (
-                    <span className="font-black text-rose-600 text-lg sm:text-2xl ml-0.5">
+                    <span className="font-black text-rose-600 text-lg sm:text-2xl ml-0.5 whitespace-nowrap">
                       Premium
                     </span>
                   )}
@@ -1133,24 +1133,24 @@ export default function App() {
               </button>
             </div>
 
-            {/* 우측: 버튼 그룹 */}
+            {/* 우측: 버튼 그룹 (줄바꿈 방지 적용) */}
             <div className="flex items-center justify-end space-x-1.5 sm:space-x-2">
               <button
                 onClick={() => setIsPricingModalOpen(true)}
-                className="px-3 py-1.5 sm:px-3.5 sm:py-1.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition flex items-center gap-1 active:scale-95 cursor-pointer shrink-0"
+                className="px-3 py-1.5 sm:px-3.5 sm:py-2 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition flex items-center gap-1 active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
               >
                 <span>👑</span>
-                <span className="hidden sm:inline">{t('membership')}</span>
+                <span className="hidden sm:inline whitespace-nowrap">{t('membership')}</span>
               </button>
 
-              <div className="relative inline-block text-left" ref={headerLangRef}>
+              <div className="relative inline-block text-left shrink-0" ref={headerLangRef}>
                 <button
                   type="button"
                   onClick={() => setIsHeaderLangOpen(!isHeaderLangOpen)}
-                  className="px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl flex items-center gap-1.5 text-xs sm:text-sm font-normal text-slate-700 transition cursor-pointer shrink-0"
+                  className="px-2.5 py-1.5 sm:px-3 sm:py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl flex items-center gap-1.5 text-xs sm:text-sm font-normal text-slate-700 transition cursor-pointer whitespace-nowrap min-w-fit"
                 >
-                  <img src={currentLangObj.flagUrl} alt={currentLangObj.label} className="w-4 h-3 object-cover rounded-2xs" />
-                  <span className="hidden sm:inline text-xs sm:text-sm font-normal">{currentLangObj.label}</span>
+                  <img src={currentLangObj.flagUrl} alt={currentLangObj.label} className="w-4 h-3 object-cover rounded-2xs shrink-0" />
+                  <span className="hidden sm:inline text-xs sm:text-sm font-normal whitespace-nowrap">{currentLangObj.label}</span>
                   <span className="text-[10px] text-slate-400">▾</span>
                 </button>
 
@@ -1164,7 +1164,7 @@ export default function App() {
                           handleLanguageChange(item.code);
                           setIsHeaderLangOpen(false);
                         }}
-                        className={`w-full flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm text-left hover:bg-rose-50 transition ${
+                        className={`w-full flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm text-left hover:bg-rose-50 transition whitespace-nowrap ${
                           lang === item.code ? 'text-rose-600 font-medium bg-rose-50/50' : 'text-slate-700 font-normal'
                         }`}
                       >
@@ -1177,19 +1177,19 @@ export default function App() {
               </div>
 
               {currentUser ? (
-                <div className="flex items-center pl-1 border-l border-slate-200">
+                <div className="flex items-center pl-1 border-l border-slate-200 shrink-0">
                   <button
                     onClick={() => setIsSettingsModalOpen(true)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 text-slate-600 hover:text-rose-600 text-xs sm:text-sm font-normal rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-slate-600 hover:text-rose-600 text-xs sm:text-sm font-normal rounded-lg hover:bg-rose-50 transition cursor-pointer whitespace-nowrap"
                     title={t('settingsTitle')}
                   >
-                    <span>⚙️</span>
-                    <span className="hidden sm:inline font-normal">{t('settingsTitle')}</span>
+                    <span className="shrink-0">⚙️</span>
+                    <span className="hidden sm:inline font-normal whitespace-nowrap">{t('settingsTitle')}</span>
                   </button>
 
                   <button
                     onClick={handleLogout}
-                    className="hidden md:inline ml-1 px-2.5 py-1.5 text-xs font-normal text-slate-500 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                    className="hidden md:inline ml-1 px-2.5 py-1.5 text-xs font-normal text-slate-500 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 rounded-lg transition cursor-pointer whitespace-nowrap"
                   >
                     {t('logout')}
                   </button>
@@ -1197,7 +1197,7 @@ export default function App() {
               ) : (
                 <button
                   onClick={() => { setAuthMode('login'); setIsAuthModalOpen(true); }}
-                  className="px-3 py-1.5 sm:px-3.5 sm:py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer shrink-0"
+                  className="px-3 py-1.5 sm:px-3.5 sm:py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-2xs transition cursor-pointer shrink-0 whitespace-nowrap"
                 >
                   {t('login')}
                 </button>
@@ -2050,7 +2050,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* 🌸 푸터 영역 (25% 확대 대상에서 제외하여 원본 크기 유지) 🌸 */}
+      {/* 🌸 푸터 영역 (25% 확대 대상에서 제외) 🌸 */}
       <footer className="footer-area w-full py-6 flex flex-col items-center justify-center border-t border-slate-200 bg-white mt-12 space-y-2 px-4 text-center">
         <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-6 text-xs font-bold text-slate-600">
           <button onClick={() => openLegalDoc('terms')} className="hover:text-rose-600 hover:underline cursor-pointer">
