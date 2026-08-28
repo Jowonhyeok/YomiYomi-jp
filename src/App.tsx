@@ -2069,7 +2069,7 @@ export default function App() {
         <div className="text-[11px] text-slate-500 space-y-1 max-w-2xl leading-relaxed">
           <p>
             {lang === 'ko'
-              ? '상호명: YomiYomi | 고객지원: support@yomiyomi-jp.com | 사업자등록번호: 588-26-01979 | 통신판매업신고: 제 2026-전남순천-7351 호'
+              ? '상호명: YomiYomi | 고객지원: support@yomiyomi-jp.com | 사업자등록번호: 588-26-01979 | 통신판매업신고: 제 2026-순천-7351 호'
               : 'Company: YomiYomi | Support: support@yomiyomi-jp.com | Business ID: 588-26-01979 | E-Commerce Permit: 2026-JeonnamSuncheon-7351'}
           </p>
           <p className="text-slate-400 text-[10px] pt-0.5">
