@@ -22,7 +22,7 @@ async function fetchGeminiDirect(apiKey, payload) {
   throw new Error(`GEMINI_API_ERROR_${response.status}: ${resText}`);
 }
 
-// JSON 안심 파싱 유틸리티 (중첩 정교화)
+// JSON 안심 파싱 유틸리티
 function extractCleanJson(rawText) {
   if (!rawText || typeof rawText !== 'string') return '{}';
   
@@ -31,8 +31,16 @@ function extractCleanJson(rawText) {
   const firstBrace = cleaned.indexOf('{');
   const lastBrace = cleaned.lastIndexOf('}');
   
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    return cleaned.substring(firstBrace, lastBrace + 1);
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  } else {
+    const firstBracket = cleaned.indexOf('[');
+    const lastBracket = cleaned.lastIndexOf(']');
+    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket >= firstBracket) {
+      cleaned = cleaned.substring(firstBracket, lastBracket + 1);
+    } else {
+      return '{}';
+    }
   }
   
   return cleaned;
@@ -41,20 +49,28 @@ function extractCleanJson(rawText) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  // 1. Firebase 인증 토큰 검증
+  // 1. Firebase API Key 환경변수 체크
+  const firebaseApiKey = env.VITE_FIREBASE_API_KEY || env.FIREBASE_API_KEY;
+  if (!firebaseApiKey) {
+    return new Response(JSON.stringify({ error: 'CONFIG_ERROR', message: 'VITE_FIREBASE_API_KEY 환경변수가 미설정되었습니다.' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  // 2. Firebase 인증 토큰 헤더 검증
   const authHeader = request.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return new Response(JSON.stringify({ error: 'UNAUTHORIZED', message: '로그인이 필요합니다.' }), {
+    return new Response(JSON.stringify({ error: 'UNAUTHORIZED', message: 'Authorization 헤더가 없거나 유효하지 않습니다.' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' }
     });
   }
 
   const idToken = authHeader.split('Bearer ')[1];
-  const firebaseApiKey = env.VITE_FIREBASE_API_KEY;
-
   let uid = null;
 
+  // 3. Firebase ID 토큰 유효성 검사
   try {
     const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseApiKey}`, {
       method: 'POST',
@@ -63,7 +79,11 @@ export async function onRequestPost(context) {
     });
 
     if (!verifyRes.ok) {
-      return new Response(JSON.stringify({ error: 'INVALID_TOKEN', message: '유효하지 않은 인증 토큰입니다.' }), {
+      const errResText = await verifyRes.text();
+      return new Response(JSON.stringify({ 
+        error: 'INVALID_TOKEN', 
+        message: `Firebase 인증 실패: ${errResText}` 
+      }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -71,9 +91,14 @@ export async function onRequestPost(context) {
 
     const verifyData = await verifyRes.json();
     uid = verifyData.users?.[0]?.localId;
-    if (!uid) throw new Error('UID를 찾을 수 없습니다.');
+    if (!uid) {
+      return new Response(JSON.stringify({ error: 'INVALID_TOKEN', message: '사용자 UID를 찾을 수 없습니다.' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
   } catch (err) {
-    return new Response(JSON.stringify({ error: 'INVALID_TOKEN', message: '인증 검증 실패: ' + err.message }), {
+    return new Response(JSON.stringify({ error: 'AUTH_VERIFY_FAILED', message: '인증 검증 통신 오류: ' + err.message }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -92,7 +117,12 @@ export async function onRequestPost(context) {
     }
 
     const apiKey = env.GEMINI_API_KEY || '';
-    if (!apiKey) throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: 'CONFIG_ERROR', message: 'GEMINI_API_KEY 환경변수가 미설정되었습니다.' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
 
     let langGuide = "English";
     if (targetLang === "zh-CN") langGuide = "Simplified Chinese";
@@ -116,16 +146,17 @@ export async function onRequestPost(context) {
           text: `Task: Analyze Japanese text for language learners. Output JSON ONLY.
 Target Language for All Meanings & Explanations: "${langGuide}" (${targetLang})
 
-CRITICAL RULES:
-1. Response must be pure JSON with NO markdown formatting (no \`\`\`json).
-2. "rubySentences" MUST contain sentences with <ruby>漢字<rt>かんじ</rt></ruby> tags.
-3. Provide "meaning" and "explanation" strictly as a single string in ${langGuide}.
-4. "partOfSpeech" MUST be strictly one of: ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
+STRICT OUTPUT RULES:
+1. Output MUST be valid JSON only. Do not wrap in markdown or add explanations.
+2. "rubySentences" MUST NOT be empty. Convert every Japanese sentence using <ruby>漢字<rt>かんじ</rt></ruby> tags.
+3. "wordList", "kanjiList", and "grammarList" MUST contain analyzed components.
+4. DO NOT output multilingual maps. Provide all "meaning" and "explanation" fields ONLY as a SINGLE STRING in ${langGuide}.
+5. "partOfSpeech" MUST be strictly one from: ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
 
-JSON Structure:
+JSON Schema:
 {
   "isJapanese": true,
-  "translatedText": "Full translation in ${langGuide}",
+  "translatedText": "Full text translation in ${langGuide}",
   "rubySentences": [
     "山中<ruby>市長<rt>しちょう</rt></ruby>は<ruby>記者会見<rt>きしゃかいけん</rt></ruby>で..."
   ],
@@ -134,7 +165,7 @@ JSON Structure:
       "word": "市長",
       "reading": "しちょう",
       "partOfSpeech": "noun",
-      "meaning": "Meaning in ${langGuide}",
+      "meaning": "Meaning string in ${langGuide}",
       "jlpt": "N3"
     }
   ],
@@ -142,13 +173,13 @@ JSON Structure:
     {
       "kanji": "市",
       "readings": "シ",
-      "meaning": "Meaning in ${langGuide}"
+      "meaning": "Meaning string in ${langGuide}"
     }
   ],
   "grammarList": [
     {
       "grammar": "〜において",
-      "explanation": "Explanation in ${langGuide}"
+      "explanation": "Explanation string in ${langGuide}"
     }
   ]
 }`
@@ -158,7 +189,7 @@ JSON Structure:
       generationConfig: {
         responseMimeType: 'application/json',
         temperature: 0.1,
-        maxOutputTokens: 3500 // 🌸 토큰 부족으로 인한 JSON 절단 방지
+        maxOutputTokens: 2000
       }
     };
 
@@ -169,18 +200,16 @@ JSON Structure:
     // 안전한 JSON 파싱
     const jsonString = extractCleanJson(rawText);
     let parsedData = {};
-    
     try {
       parsedData = JSON.parse(jsonString);
     } catch (parseError) {
-      // 2차 파싱 방어 (따옴표나 개행 문제 보정)
-      try {
-        const sanitizedStr = jsonString.replace(/[\u0000-\u001F\u007F-\u009F]/g, " ");
-        parsedData = JSON.parse(sanitizedStr);
-      } catch (secondaryError) {
-        console.error('[Raw Gemini Response Parsing Error]:', rawText);
-        throw new Error("FAILED_TO_PARSE_CLEANED_JSON");
-      }
+      return new Response(JSON.stringify({ 
+        error: 'PARSE_ERROR', 
+        message: `JSON 파싱 실패 원본: ${rawText.slice(0, 300)}` 
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     return new Response(JSON.stringify(parsedData), {
@@ -193,9 +222,12 @@ JSON Structure:
 
   } catch (err) {
     const errString = String(err?.message || err || '');
-    console.error('[Analyze Error Detail]:', errString);
 
-    return new Response(JSON.stringify({ error: 'INTERNAL_SERVER_ERROR', message: errString || '서버 오류가 발생했습니다.' }), {
+    // 🌸 서버 에러 발생 시 브라우저 응답에 상세 원인 메시지 노출 🌸
+    return new Response(JSON.stringify({ 
+      error: 'SERVER_EXECUTION_ERROR', 
+      message: `[Server Detail Error]: ${errString}` 
+    }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
