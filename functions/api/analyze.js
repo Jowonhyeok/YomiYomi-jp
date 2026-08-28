@@ -1,6 +1,6 @@
-// 구글 Gemini REST API 다이렉트 호출 함수 (공식 gemini-1.5-flash 모델 적용)
+// 구글 Gemini REST API 다이렉트 호출 함수 (gemini-3.5-flash-lite 적용)
 async function fetchGeminiDirect(apiKey, payload) {
-  const targetModel = 'gemini-1.5-flash'; // 🌸 존재하지 않는 모델명 오타 수정
+  const targetModel = 'gemini-3.5-flash-lite';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
 
   const response = await fetch(url, {
@@ -19,7 +19,7 @@ async function fetchGeminiDirect(apiKey, payload) {
     }
   }
 
-  // 400, 403, 404 에러 시 재시도 없이 원인 즉시 반환
+  // 400, 403, 404 등 오류 발생 시 지연 없이 원인 즉시 반환
   throw new Error(`GEMINI_API_ERROR_${response.status}: ${resText}`);
 }
 
