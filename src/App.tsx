@@ -519,7 +519,7 @@ export default function App() {
     });
   };
 
-  // 🌸 레몬스퀴지 공식 임베드 결제 모달 호출 함수
+  // 🌸 레몬스퀴지 공식 결제 호출 함수 (URL 호환성 보정)
   const handleLemonSqueezyPayment = (planName: string, checkoutUrlRaw: string) => {
     if (!agreePayPolicy) {
       showAlert(lang === 'ko' ? "결제 약관 및 이용 정책에 동의해 주세요." : "Please agree to the payment policy terms.");
@@ -534,18 +534,35 @@ export default function App() {
 
     sessionStorage.setItem('pendingPlanName', planName);
 
-    let checkoutUrl = checkoutUrlRaw.trim();
-    if (!checkoutUrl.includes('embed=1')) {
-      const hasQuery = checkoutUrl.includes('?');
-      checkoutUrl += `${hasQuery ? '&' : '?'}embed=1`;
+    let baseUrl = (checkoutUrlRaw && checkoutUrlRaw !== 'undefined') ? checkoutUrlRaw.trim() : '';
+
+    if (!baseUrl) {
+      if (planName.includes('3개월') || planName.includes('3-Month') || planName.includes('3 month')) {
+        baseUrl = 'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/c190392a-86b8-4828-a4d6-dd88e54d8e53';
+      } else if (planName.includes('1년') || planName.includes('1-Year') || planName.includes('1 year')) {
+        baseUrl = 'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/3302e962-c15b-42b1-afda-f4272bd3a424';
+      } else {
+        baseUrl = 'https://yomiyomi-jp.lemonsqueezy.com/checkout/buy/c74e6951-6422-4bfe-a38d-ed18e989371d';
+      }
     }
 
-    checkoutUrl += `&checkout[email]=${encodeURIComponent(currentUser.email || '')}`;
+    try {
+      const validUrl = new URL(baseUrl);
+      validUrl.searchParams.set('embed', '1');
+      if (currentUser.email) {
+        validUrl.searchParams.set('checkout[email]', currentUser.email);
+      }
 
-    if (window.LemonSqueezy && window.LemonSqueezy.Url) {
-      window.LemonSqueezy.Url.Open(checkoutUrl);
-    } else {
-      window.open(checkoutUrl, '_blank');
+      const finalUrlString = validUrl.toString();
+
+      if (window.LemonSqueezy && window.LemonSqueezy.Url) {
+        window.LemonSqueezy.Url.Open(finalUrlString);
+      } else {
+        window.open(finalUrlString, '_blank');
+      }
+    } catch (err) {
+      console.error('[LemonSqueezy URL Build Error]:', err);
+      showAlert('결제 주소를 생성하는 중 오류가 발생했습니다. 다시 시도해 주세요.');
     }
   };
 
@@ -2089,7 +2106,7 @@ export default function App() {
         </p>
       </footer>
 
-      {/* 🌸 요금제 모달 (공식 레몬스퀴지 임베드 링크 적용) 🌸 */}
+      {/* 🌸 요금제 모달 🌸 */}
       {isPricingModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-60 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-rose-100 relative space-y-5 animate-in fade-in zoom-in-95 duration-150">
