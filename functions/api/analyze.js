@@ -1,8 +1,8 @@
-// 구글 Gemini REST API 다이렉트 호출 함수 (gemini-3.5-flash-lite 고정 + 지수 백오프)
+// 구글 Gemini REST API 다이렉트 호출 함수 (gemini-3.5-flash-lite 고정 + 지수 백오프 버그 수정)
 async function fetchGeminiDirect(apiKey, payload, retries = 3, initialDelay = 1000) {
   const targetModel = 'gemini-3.5-flash-lite';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
-  let delay = initialDelay;
+  let currentDelay = initialDelay;
 
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
@@ -22,10 +22,11 @@ async function fetchGeminiDirect(apiKey, payload, retries = 3, initialDelay = 10
         }
       }
 
-      if (response.status === 503 || response.status === 429) {
-        console.warn(`[Gemini API Warning] Status ${response.status}. ${delay}ms 후 재시도... (${attempt + 1}/${retries})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2;
+      // 503(과부하) 또는 429(Rate Limit) 발생 시 재시도
+      if ((response.status === 503 || response.status === 429) && attempt < retries - 1) {
+        console.warn(`[Gemini API Warning] Status ${response.status}. ${currentDelay}ms 후 재시도... (${attempt + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, currentDelay));
+        currentDelay *= 2;
         continue;
       }
 
@@ -33,8 +34,9 @@ async function fetchGeminiDirect(apiKey, payload, retries = 3, initialDelay = 10
 
     } catch (err) {
       if (attempt === retries - 1) throw err;
-      await new Promise(resolve => setTimeout(resolve, delay));
-      delay *= 2;
+      console.warn(`[Gemini Request Exception] ${err.message}. ${currentDelay}ms 후 재시도... (${attempt + 1}/${retries})`);
+      await new Promise(resolve => setTimeout(resolve, currentDelay));
+      currentDelay *= 2;
     }
   }
 }
@@ -179,7 +181,6 @@ export async function onRequestPost(context) {
       parts.push({ text: "Instruction: OCR and analyze Japanese text in image." });
     }
 
-    // 🌸 원본 System Instruction 구조 복원
     const payload = {
       systemInstruction: {
         parts: [{
@@ -207,7 +208,6 @@ Schema Rules:
     try {
       let cleanedJsonText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
       
-      // 🌸 안전한 JSON 슬라이싱 (객체 `{}` 및 배열 `[]` 지원)
       const firstObj = cleanedJsonText.indexOf('{');
       const firstArr = cleanedJsonText.indexOf('[');
       
