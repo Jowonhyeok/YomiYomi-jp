@@ -1,6 +1,5 @@
-// 구글 Gemini REST API 다이렉트 호출 함수 (gemini-3.5-flash-lite 고정)
+// 구글 Gemini REST API 다이렉트 호출 함수 (gemini-3.5-flash-lite 고정 + 지수 백오프)
 async function fetchGeminiDirect(apiKey, payload, retries = 3, initialDelay = 1000) {
-  // 사용 중이신 gemini-3.5-flash-lite 고정
   const targetModel = 'gemini-3.5-flash-lite';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
   let delay = initialDelay;
@@ -23,7 +22,6 @@ async function fetchGeminiDirect(apiKey, payload, retries = 3, initialDelay = 10
         }
       }
 
-      // 503 (Service Unavailable) 또는 429 (Rate Limit) 시 자동 대기 후 재시도
       if (response.status === 503 || response.status === 429) {
         console.warn(`[Gemini API Warning] Status ${response.status}. ${delay}ms 후 재시도... (${attempt + 1}/${retries})`);
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -121,7 +119,6 @@ export async function onRequestPost(context) {
     const today = new Date().toISOString().split('T')[0];
     let dailyCount = userData.lastAnalyzeDate === today ? (userData.dailyAnalyzeCount || 0) : 0;
 
-    // 🛡️ 1. 유저 계정 기준 제한 검증
     if (!isSubscribed && dailyCount >= 3) {
       return new Response(JSON.stringify({ error: 'DAILY_LIMIT_EXCEEDED', message: '오늘의 무료 분석 횟수(3회)를 모두 사용하셨습니다.' }), {
         status: 429,
@@ -134,7 +131,6 @@ export async function onRequestPost(context) {
       });
     }
 
-    // 🛡️ 2. 기기 핑거프린트 검증
     let deviceUsageCount = 0;
     const isValidDeviceId = typeof deviceId === 'string' && deviceId.trim().length > 0;
 
@@ -183,6 +179,7 @@ export async function onRequestPost(context) {
       parts.push({ text: "Instruction: OCR and analyze Japanese text in image." });
     }
 
+    // 🌸 원본 System Instruction 구조 복원
     const payload = {
       systemInstruction: {
         parts: [{
@@ -208,12 +205,23 @@ Schema Rules:
     
     let parsedData = {};
     try {
-      // JSON 파싱 안전성 강화: 첫번째 '{' 와 마지막 '}' 사이의 텍스트만 슬라이싱
       let cleanedJsonText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-      const firstBrace = cleanedJsonText.indexOf('{');
-      const lastBrace = cleanedJsonText.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace !== -1) {
-        cleanedJsonText = cleanedJsonText.substring(firstBrace, lastBrace + 1);
+      
+      // 🌸 안전한 JSON 슬라이싱 (객체 `{}` 및 배열 `[]` 지원)
+      const firstObj = cleanedJsonText.indexOf('{');
+      const firstArr = cleanedJsonText.indexOf('[');
+      
+      let startPos = -1;
+      if (firstObj !== -1 && firstArr !== -1) startPos = Math.min(firstObj, firstArr);
+      else if (firstObj !== -1) startPos = firstObj;
+      else if (firstArr !== -1) startPos = firstArr;
+
+      const lastObj = cleanedJsonText.lastIndexOf('}');
+      const lastArr = cleanedJsonText.lastIndexOf(']');
+      const endPos = Math.max(lastObj, lastArr);
+
+      if (startPos !== -1 && endPos !== -1 && endPos > startPos) {
+        cleanedJsonText = cleanedJsonText.substring(startPos, endPos + 1);
       }
 
       parsedData = JSON.parse(cleanedJsonText);
@@ -222,7 +230,6 @@ Schema Rules:
       throw new Error(`FAILED_TO_PARSE_GEMINI_RESPONSE: ${rawText.slice(0, 100)}`);
     }
 
-    // 🌸 DB 카운트 증가 처리 (비동기)
     if (context.waitUntil) {
       const asyncTasks = [
         fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
