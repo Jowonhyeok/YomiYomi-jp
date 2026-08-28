@@ -56,7 +56,6 @@ export function getLocalizedPOS(pos: string, lang: Lang): string {
     other: { ko: '기타', en: 'Other', 'zh-CN': 'Other', 'zh-TW': '其他', ja: 'その他' }
   };
 
-  // 키워드 기반 스마트 카테고리 감지 (AI가 한글/중국어/영어 혼용 텍스트를 내놓아도 방어)
   let matchedKey = 'other';
 
   if (rawPos.includes('noun') || rawPos.includes('명사') || rawPos.includes('名詞') || rawPos.includes('名词')) {
@@ -178,7 +177,12 @@ export async function fetchWithRetry(url: string, options: RequestInit, retries 
   }
 }
 
-export async function analyzeJapanese(text: string, targetLang: Lang, imageBase64?: { mimeType: string; data: string }): Promise<AnalysisResult> {
+export async function analyzeJapanese(
+  text: string, 
+  targetLang: Lang, 
+  imageBase64?: { mimeType: string; data: string },
+  deviceId?: string | null
+): Promise<AnalysisResult> {
   const firebaseUser = auth.currentUser;
   if (!firebaseUser) {
     throw new Error("LOGIN_REQUIRED");
@@ -202,7 +206,8 @@ export async function analyzeJapanese(text: string, targetLang: Lang, imageBase6
     body: JSON.stringify({
       text,
       targetLang,
-      imageBase64
+      imageBase64,
+      deviceId
     })
   });
 
@@ -210,11 +215,11 @@ export async function analyzeJapanese(text: string, targetLang: Lang, imageBase6
     const errData = await response.json().catch(() => ({}));
     if (response.status === 429) {
       if (errData.error === 'DAILY_LIMIT_EXCEEDED') throw new Error("DAILY_LIMIT_EXCEEDED");
+      if (errData.error === 'DEVICE_LIMIT_EXCEEDED') throw new Error("DEVICE_LIMIT_EXCEEDED");
       throw new Error(errData.message || "RATE_LIMIT_EXCEEDED");
     }
     if (response.status === 401) throw new Error("UNAUTHORIZED");
     
-    // 🌸 구글 API 503 과부하 또는 HTTP 503 반환 시 에러 키워드 포함 전달
     if (response.status === 503) {
       throw new Error(errData.message || "503 Service Unavailable");
     }

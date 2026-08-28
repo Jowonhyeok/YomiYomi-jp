@@ -1,4 +1,17 @@
 import React, { useState } from 'react';
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
+
+// 기기 고유 ID 생성 유틸 함수 (API 요청 시 활용)
+export async function getDeviceId() {
+  try {
+    const fp = await FingerprintJS.load();
+    const result = await fp.get();
+    return result.visitorId;
+  } catch (e) {
+    console.error('Failed to get device ID:', e);
+    return null;
+  }
+}
 
 export default function AnalyzeResult({ resultData, inputText, userData }) {
   // 1. 요미가나 및 번역 표시 상태 관리

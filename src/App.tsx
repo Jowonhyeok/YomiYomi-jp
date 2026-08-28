@@ -11,6 +11,7 @@ import {
   deleteUser
 } from 'firebase/auth';
 import { doc, setDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import { auth, googleProvider, db } from './firebase';
 
 import type { Lang, KanjiInfo, WordInfo, GrammarInfo, AnalysisResult, Deck, UserProfile } from './types';
@@ -68,6 +69,18 @@ const LANG_OPTIONS: { code: Lang; flagUrl: string; label: string }[] = [
   { code: 'ko', flagUrl: 'https://flagcdn.com/kr.svg', label: '한국어' },
   { code: 'ja', flagUrl: 'https://flagcdn.com/jp.svg', label: '日本語' },
 ];
+
+// 🌸 기기 고유 ID 가져오기 유틸 함수
+async function getDeviceId(): Promise<string | null> {
+  try {
+    const fp = await FingerprintJS.load();
+    const result = await fp.get();
+    return result.visitorId;
+  } catch (e) {
+    console.error('Failed to load fingerprint device ID:', e);
+    return null;
+  }
+}
 
 export default function App() {
   const { currentUser, lang, setCurrentUser, setLang } = useUserStore();
@@ -662,6 +675,7 @@ export default function App() {
     window.speechSynthesis.speak(utterance);
   };
 
+  // 🌸 기기 ID(deviceId)를 포함하여 분석 요청 처리
   const handleAnalyze = async () => {
     if (!currentUser) {
       showAlert(t('loginGateMsg'));
@@ -679,7 +693,12 @@ export default function App() {
 
     try {
       const imagePayload = selectedImage ? { mimeType: selectedImage.mimeType, data: selectedImage.data } : undefined;
-      const result = await analyzeJapanese(inputText, lang, imagePayload);
+      
+      // 기기 고유 ID 가져오기
+      const deviceId = await getDeviceId();
+
+      // analyzeJapanese 함수에 deviceId 전달
+      const result = await analyzeJapanese(inputText, lang, imagePayload, deviceId);
       setAnalysisResult(result);
       
       recordFeatureUsage();
@@ -687,7 +706,6 @@ export default function App() {
     } catch (error: any) {
       const errMessage = String(error?.message || error || '');
 
-      // 🌸 구글 AI 과부하 에러(503 Service Unavailable / High Demand) 핸들링
       if (
         errMessage.includes("503") || 
         errMessage.includes("Service Unavailable") || 
@@ -698,6 +716,8 @@ export default function App() {
       } else if (errMessage === "DAILY_LIMIT_EXCEEDED") {
         showAlert(t('dailyLimitReached'));
         setIsPricingModalOpen(true);
+      } else if (errMessage === "DEVICE_LIMIT_EXCEEDED") {
+        showAlert("해당 기기에서 오늘의 무료 분석 횟수(3회)를 모두 사용하셨습니다.");
       } else if (errMessage === "FUP_LIMIT_EXCEEDED") {
         setErrorMessage("⚠️ " + (lang === 'ko' ? "일일 최대 분석 제공량을 초과했습니다. 내일 다시 이용해 주세요." : "Daily usage limit exceeded. Please try again tomorrow."));
       } else if (errMessage === "RATE_LIMIT_EXCEEDED") {

@@ -1,5 +1,5 @@
-// SDK 없이 구글 Gemini REST API를 직접 타격하는 재시도 함수
-async function fetchGeminiDirect(apiKey, payload, retries = 2, delay = 800) {
+// 구글 Gemini REST API 다이렉트 호출 함수
+async function fetchGeminiDirect(apiKey, payload, retries = 1, delay = 1000) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`;
   
   try {
@@ -95,7 +95,7 @@ export async function onRequestPost(context) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { text, targetLang = 'en', imageBase64 } = body;
+    const { text, targetLang = 'en', imageBase64, deviceId } = body;
     const MAX_INPUT_TEXT = 2500;
 
     if (text && text.length > MAX_INPUT_TEXT) {
@@ -108,6 +108,7 @@ export async function onRequestPost(context) {
     const today = new Date().toISOString().split('T')[0];
     let dailyCount = userData.lastAnalyzeDate === today ? (userData.dailyAnalyzeCount || 0) : 0;
 
+    // 🛡️ 1. 유저 계정 기준 제한 검증
     if (!isSubscribed && dailyCount >= 3) {
       return new Response(JSON.stringify({ error: 'DAILY_LIMIT_EXCEEDED', message: '오늘의 무료 분석 횟수(3회)를 모두 사용하셨습니다.' }), {
         status: 429,
@@ -118,6 +119,34 @@ export async function onRequestPost(context) {
         status: 429,
         headers: { 'Content-Type': 'application/json' }
       });
+    }
+
+    // 🛡️ 2. 기기 핑거프린트(deviceId) 기준 검증 (탈퇴 후 재가입 방지)
+    let deviceUsageCount = 0;
+    if (deviceId && !isSubscribed) {
+      try {
+        const deviceDocRes = await fetch(
+          `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/devices/${deviceId}_${today}`,
+          { headers: { 'Authorization': `Bearer ${idToken}` } }
+        );
+
+        if (deviceDocRes.ok) {
+          const deviceData = await deviceDocRes.json();
+          deviceUsageCount = parseInt(deviceData.fields?.count?.integerValue || '0', 10);
+        }
+
+        if (deviceUsageCount >= 3) {
+          return new Response(JSON.stringify({ 
+            error: 'DEVICE_LIMIT_EXCEEDED', 
+            message: '해당 기기에서 오늘의 무료 분석 횟수(3회)를 모두 사용하셨습니다.' 
+          }), {
+            status: 429,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      } catch (devErr) {
+        console.error('Device Check Warning:', devErr);
+      }
     }
 
     const apiKey = env.GEMINI_API_KEY || '';
@@ -136,95 +165,21 @@ export async function onRequestPost(context) {
       parts.push({ text: "Instruction: OCR and analyze Japanese text in image." });
     }
 
-    // 🌸 System Instruction & Response Schema 적용 페이로드
     const payload = {
       systemInstruction: {
         parts: [{
-          text: `Task: Analyze Japanese input for language learners.
-Target Language: "${targetLang}" (${langGuide})
+          text: `Task: Analyze Japanese text for language learners. Output JSON ONLY.
+Target Translation Language: "${targetLang}" (${langGuide})
 
-Rules:
-1. "translatedText": Full text translation in target language (string).
-2. "partOfSpeech": Standard code strictly from ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
-3. "meaning" & "explanation": Multilingual map with keys ["ko","en","zh-CN","zh-TW","ja"].`
+Schema Rules:
+- "translatedText": Full translation string in target language.
+- "partOfSpeech": Exactly one strictly from ["noun","verb","adjective","adverb","particle","conjunction","auxiliary verb","expression","prefix","suffix"].
+- "meaning" & "explanation": Multilingual map with keys ["ko","en","zh-CN","zh-TW","ja"].`
         }]
       },
       contents: [{ role: 'user', parts: parts }],
       generationConfig: {
         responseMimeType: 'application/json',
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            isJapanese: { type: "BOOLEAN" },
-            translatedText: { type: "STRING" },
-            rubySentences: { type: "ARRAY", items: { type: "STRING" } },
-            kanjiList: {
-              type: "ARRAY",
-              items: {
-                type: "OBJECT",
-                properties: {
-                  kanji: { type: "STRING" },
-                  readings: { type: "STRING" },
-                  meaning: {
-                    type: "OBJECT",
-                    properties: {
-                      ko: { type: "STRING" },
-                      en: { type: "STRING" },
-                      "zh-CN": { type: "STRING" },
-                      "zh-TW": { type: "STRING" },
-                      ja: { type: "STRING" }
-                    }
-                  }
-                },
-                required: ["kanji", "readings", "meaning"]
-              }
-            },
-            wordList: {
-              type: "ARRAY",
-              items: {
-                type: "OBJECT",
-                properties: {
-                  word: { type: "STRING" },
-                  reading: { type: "STRING" },
-                  partOfSpeech: { type: "STRING" },
-                  meaning: {
-                    type: "OBJECT",
-                    properties: {
-                      ko: { type: "STRING" },
-                      en: { type: "STRING" },
-                      "zh-CN": { type: "STRING" },
-                      "zh-TW": { type: "STRING" },
-                      ja: { type: "STRING" }
-                    }
-                  },
-                  jlpt: { type: "STRING" }
-                },
-                required: ["word", "reading", "partOfSpeech", "meaning"]
-              }
-            },
-            grammarList: {
-              type: "ARRAY",
-              items: {
-                type: "OBJECT",
-                properties: {
-                  grammar: { type: "STRING" },
-                  explanation: {
-                    type: "OBJECT",
-                    properties: {
-                      ko: { type: "STRING" },
-                      en: { type: "STRING" },
-                      "zh-CN": { type: "STRING" },
-                      "zh-TW": { type: "STRING" },
-                      ja: { type: "STRING" }
-                    }
-                  }
-                },
-                required: ["grammar", "explanation"]
-              }
-            }
-          },
-          required: ["isJapanese", "translatedText", "rubySentences", "wordList"]
-        },
         temperature: 0.1,
         maxOutputTokens: 2048
       }
@@ -232,24 +187,50 @@ Rules:
 
     const apiResult = await fetchGeminiDirect(apiKey, payload);
     const rawText = apiResult.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    const parsedData = JSON.parse(rawText);
+    
+    let parsedData = {};
+    try {
+      const cleanedJsonText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+      parsedData = JSON.parse(cleanedJsonText);
+    } catch (pErr) {
+      console.error('JSON Parse Error Raw Content:', rawText);
+      throw new Error('FAILED_TO_PARSE_GEMINI_RESPONSE');
+    }
 
-    // Firestore 비동기 처리
-    context.waitUntil(
-      fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
-        method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}` 
-        },
-        body: JSON.stringify({
-          fields: {
-            dailyAnalyzeCount: { integerValue: String(dailyCount + 1) },
-            lastAnalyzeDate: { stringValue: today }
-          }
-        })
-      }).catch(err => console.error('Firestore Update Warning:', err))
-    );
+    // Firestore 비동기 처리 (유저 카운트 및 기기 카운트 동시 업데이트)
+    if (context.waitUntil) {
+      context.waitUntil(
+        Promise.all([
+          // 유저 일일 카운트 업데이트
+          fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}?updateMask.fieldPaths=dailyAnalyzeCount&updateMask.fieldPaths=lastAnalyzeDate`, {
+            method: 'PATCH',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}` 
+            },
+            body: JSON.stringify({
+              fields: {
+                dailyAnalyzeCount: { integerValue: String(dailyCount + 1) },
+                lastAnalyzeDate: { stringValue: today }
+              }
+            })
+          }),
+          // 기기(DeviceId) 카운트 업데이트
+          deviceId ? fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/devices/${deviceId}_${today}`, {
+            method: 'PATCH',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}` 
+            },
+            body: JSON.stringify({
+              fields: {
+                count: { integerValue: String(deviceUsageCount + 1) }
+              }
+            })
+          }) : Promise.resolve()
+        ]).catch(err => console.error('Firestore Async Update Warning:', err))
+      );
+    }
 
     return new Response(JSON.stringify(parsedData), {
       status: 200,
